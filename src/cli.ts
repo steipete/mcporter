@@ -589,8 +589,15 @@ Commands:
   list [name] [--schema]             List configured MCP servers (and tools for a server)
   call [selector] [flags]            Call a tool (selector like server.tool)
     --tail-log                       Tail log output when the tool returns a log file path
-  generate-cli --server <ref>        Generate a standalone CLI (supports --output, --bundle)
-    --name <name> --command <ref>   Alternate shorthand for --server JSON
+  generate-cli --server <ref>        Generate a standalone CLI
+    --name <name>                    Supply a friendly name (otherwise inferred)
+    --command <ref>                  MCP command or URL (required without --server)
+    --output <path>                  Override output file path
+    --bundle [path]                  Create a bundled JS file (auto-named when omitted)
+    --compile [path]                 Compile with Bun (implies --bundle); requires Bun
+    --minify                         Minify bundled output
+    --runtime node|bun               Force runtime selection (auto-detected otherwise)
+    --timeout <ms>                   Override introspection timeout (default 30000)
 
 Global flags:
   --config <path>                    Path to mcporter.json (defaults to ./config/mcporter.json)
