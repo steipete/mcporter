@@ -21,12 +21,17 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "check": "biome check",
+    "check": "pnpm lint:biome && pnpm lint:oxlint && pnpm typecheck",
     "lint": "pnpm check",
+    "lint:biome": "biome check",
+    "lint:oxlint": "oxlint --type-aware --tsconfig tsconfig.json --max-warnings=0",
+    "typecheck": "tsgo --project tsconfig.json --noEmit",
     "test": "vitest run",
     "clean": "rimraf dist",
     "dev": "tsc -w -p tsconfig.build.json",
-    "prepublishOnly": "pnpm check && pnpm test && pnpm build"
+    "prepublishOnly": "pnpm check && pnpm test && pnpm build",
+    "mcp:list": "pnpm exec tsx src/cli.ts list",
+    "mcp:call": "pnpm exec tsx src/cli.ts call"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",
@@ -36,8 +41,12 @@
     "@biomejs/biome": "^2.3.3",
     "@types/express": "^4.17.21",
     "@types/node": "^22.7.4",
+    "@typescript/native-preview": "7.0.0-dev.20251104.1",
     "express": "^4.21.1",
+    "oxlint": "^1.25.0",
+    "oxlint-tsgolint": "^0.5.0",
     "rimraf": "^6.0.1",
+    "tsx": "^4.16.5",
     "typescript": "^5.6.3",
     "vitest": "^1.6.0"
   },

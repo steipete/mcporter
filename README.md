@@ -57,6 +57,10 @@ npx mcp-runtime list                          # list all configured servers
 npx mcp-runtime list vercel --schema          # show tool signatures + schemas
 npx mcp-runtime call linear.searchIssues owner=ENG status=InProgress
 npx mcp-runtime call signoz.query --tail-log  # print the tail of returned log files
+
+# local scripts mirroring the Sweetistics workflow
+pnpm mcp:list                                 # alias for mcp-runtime list
+pnpm mcp:call chrome-devtools.getTabs --tail-log
 ```
 
 Common flags:

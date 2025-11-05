@@ -12,6 +12,9 @@ import { createRuntime } from "../src/runtime.js";
 
 const app = express();
 app.use(express.json());
+app.get("/mcp", (_req, res) => {
+	res.sendStatus(405);
+});
 
 const server = new McpServer({
 	name: "integration-demo",
@@ -42,18 +45,28 @@ server.registerResource(
 		title: "Greeting",
 		description: "Dynamic greeting resource",
 	},
-	async (uri, { name }) => ({
-		contents: [
-			{
-				uri: uri.href,
-				text: `Hello, ${name}!`,
-			},
-		],
-	}),
+	async (uri, { name }) => {
+		const normalizedName =
+			typeof name === "string"
+				? name
+				: Array.isArray(name)
+					? name.join(", ")
+					: "friend";
+
+		return {
+			contents: [
+				{
+					uri: uri.href,
+					text: `Hello, ${normalizedName}!`,
+				},
+			],
+		};
+	},
 );
 
 app.post("/mcp", async (req, res) => {
 	const transport = new StreamableHTTPServerTransport({
+		sessionIdGenerator: undefined,
 		enableJsonResponse: true,
 	});
 
