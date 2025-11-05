@@ -27,6 +27,24 @@
       "description": "Next.js dev server introspection (project metadata, logs, page insights).",
       "baseUrl": "http://localhost:3000/_next/mcp"
     },
+    "obsidian": {
+      "description": "Local Obsidian vault access via obsidian-mcp-server.",
+      "command": "bash",
+      "args": [
+        "scripts/mcp_stdio_wrapper.sh",
+        "env",
+        "npm_config_loglevel=error",
+        "npx",
+        "-y",
+        "obsidian-mcp-server@latest"
+      ],
+      "env": {
+        "OBSIDIAN_API_KEY": "${OBSIDIAN_API_KEY}",
+        "OBSIDIAN_BASE_URL": "${OBSIDIAN_BASE_URL:-https://127.0.0.1:27124}",
+        "OBSIDIAN_VERIFY_SSL": "${OBSIDIAN_VERIFY_SSL:-false}",
+        "OBSIDIAN_ENABLE_CACHE": "${OBSIDIAN_ENABLE_CACHE:-true}"
+      }
+    },
     "playwright": {
       "description": "Playwright MCP server for accessibility-driven automation.",
       "command": "bash",

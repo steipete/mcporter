@@ -11,6 +11,8 @@
 - Added a `--timeout <ms>` flag to `mcporter list` to override the per-server discovery timeout without touching environment variables.
 
 - Generated CLIs now show full command signatures in help and support `--compile` without leaving template/bundle intermediates.
+- StdIO-backed MCP servers now receive resolved environment overrides, so API keys flow through to launched processes like `obsidian-mcp-server`.
+- Hardened the CLI generator to surface enum defaults/metadata and added regression tests around the new helper utilities.
 
 ## [0.1.0]
 

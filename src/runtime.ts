@@ -8,7 +8,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { CallToolRequest, ListResourcesRequest } from '@modelcontextprotocol/sdk/types.js';
 import { loadServerDefinitions, type ServerDefinition } from './config.js';
-import { resolveEnvPlaceholders, withEnvOverrides } from './env.js';
+import { resolveEnvPlaceholders, resolveEnvValue, withEnvOverrides } from './env.js';
 import { createOAuthSession, type OAuthSession } from './oauth.js';
 
 const PACKAGE_NAME = 'mcporter';
@@ -247,10 +247,19 @@ class McpRuntime implements Runtime {
       }
 
       if (definition.command.kind === 'stdio') {
+        const resolvedEnv =
+          definition.env && Object.keys(definition.env).length > 0
+            ? Object.fromEntries(
+                Object.entries(definition.env)
+                  .map(([key, raw]) => [key, resolveEnvValue(raw)])
+                  .filter(([, value]) => value !== '')
+              )
+            : undefined;
         const transport = new StdioClientTransport({
           command: definition.command.command,
           args: definition.command.args,
           cwd: definition.command.cwd,
+          env: resolvedEnv,
         });
         await client.connect(transport);
         return { client, transport, definition, oauthSession };

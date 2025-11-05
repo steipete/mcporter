@@ -6,7 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import express from 'express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { generateCli } from '../src/generate-cli.js';
+import { __test as generateCliInternals, generateCli } from '../src/generate-cli.js';
 
 let baseUrl: URL;
 const tmpDir = path.join(process.cwd(), 'tmp', 'mcporter-cli-tests');
@@ -214,6 +214,38 @@ describe('generateCli', () => {
     // --raw path exercised implicitly by runtime when needed; end-to-end call
     // verification is covered in runtime integration tests.
   }, 20_000);
+});
+
+describe('generateCli helpers', () => {
+  const { getEnumValues, getDescriptorDefault, buildPlaceholder, buildExampleValue } = generateCliInternals;
+
+  it('extracts enum candidates from descriptors', () => {
+    expect(getEnumValues({ type: 'string', enum: ['a', 'b', 1] })).toEqual(['a', 'b']);
+    expect(
+      getEnumValues({
+        type: 'array',
+        items: { type: 'string', enum: ['x', 'y'] },
+      })
+    ).toEqual(['x', 'y']);
+    expect(getEnumValues({ type: 'number' })).toBeUndefined();
+  });
+
+  it('derives defaults, placeholders, and examples', () => {
+    expect(getDescriptorDefault({ type: 'string', default: 'inline' })).toBe('inline');
+    expect(
+      getDescriptorDefault({
+        type: 'array',
+        items: { type: 'string' },
+        default: ['first'],
+      })
+    ).toEqual(['first']);
+
+    expect(buildPlaceholder('mode', 'string', ['read', 'write'])).toBe('<mode:read|write>');
+    expect(buildExampleValue('mode', 'string', ['read', 'write'], undefined)).toBe('read');
+    expect(buildPlaceholder('count', 'number')).toBe('<count:number>');
+    expect(buildExampleValue('count', 'number', undefined, 3)).toBe('3');
+    expect(buildExampleValue('path', 'string', undefined, undefined)).toBe('/path/to/file.md');
+  });
 });
 
 async function exists(file: string | undefined): Promise<boolean> {

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => {
   const listResourcesMock = vi.fn();
   const clientInstances: unknown[] = [];
   const streamableInstances: unknown[] = [];
+  const stdioInstances: unknown[] = [];
 
   class MockClient {
     constructor() {
@@ -55,7 +56,9 @@ const mocks = vi.hoisted(() => {
 
   class MockStdioClientTransport {
     public close = vi.fn(async () => {});
-    constructor(public options: unknown) {}
+    constructor(public options: unknown) {
+      stdioInstances.push(this);
+    }
   }
 
   class MockUnauthorizedError extends Error {}
@@ -67,6 +70,7 @@ const mocks = vi.hoisted(() => {
     listResourcesMock,
     clientInstances,
     streamableInstances,
+    stdioInstances,
     MockClient,
     MockStreamableHTTPClientTransport,
     MockSSEClientTransport,
@@ -105,6 +109,7 @@ describe('mcporter composability', () => {
     mocks.listResourcesMock.mockReset();
     mocks.clientInstances.length = 0;
     mocks.streamableInstances.length = 0;
+    mocks.stdioInstances.length = 0;
 
     mocks.listToolsMock.mockResolvedValue({ tools: [] });
     mocks.callToolMock.mockResolvedValue({ ok: true });
@@ -192,6 +197,60 @@ describe('mcporter composability', () => {
       } else {
         process.env.INLINE_TOKEN = previousToken;
       }
+    }
+  });
+});
+
+describe('stdio transport environment', () => {
+  const previousEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...previousEnv };
+    mocks.listToolsMock.mockReset();
+    mocks.listToolsMock.mockResolvedValue({ tools: [] });
+    mocks.clientInstances.length = 0;
+    mocks.stdioInstances.length = 0;
+  });
+
+  afterEach(() => {
+    process.env = { ...previousEnv };
+    vi.clearAllMocks();
+  });
+
+  it('resolves env overrides before spawning stdio transport', async () => {
+    process.env.OBSIDIAN_API_KEY = 'secret';
+    delete process.env.OBSIDIAN_BASE_URL;
+
+    const runtime = await createRuntime({
+      servers: [
+        {
+          name: 'obsidian',
+          description: 'Local Obsidian bridge',
+          command: {
+            kind: 'stdio' as const,
+            command: 'node',
+            args: ['--version'],
+            cwd: '/repo',
+          },
+          env: {
+            OBSIDIAN_API_KEY: '${OBSIDIAN_API_KEY}',
+            OBSIDIAN_BASE_URL: '${OBSIDIAN_BASE_URL:-https://127.0.0.1:27124}',
+            EMPTY_VAR: '',
+          },
+        },
+      ],
+    });
+
+    try {
+      await runtime.listTools('obsidian');
+      expect(mocks.stdioInstances).toHaveLength(1);
+      const transport = mocks.stdioInstances[0] as { options: { env?: Record<string, string> } };
+      expect(transport.options.env).toEqual({
+        OBSIDIAN_API_KEY: 'secret',
+        OBSIDIAN_BASE_URL: 'https://127.0.0.1:27124',
+      });
+    } finally {
+      await runtime.close().catch(() => {});
     }
   });
 });

@@ -35,6 +35,10 @@ interface GeneratedOption {
   description?: string;
   required: boolean;
   type: 'string' | 'number' | 'boolean' | 'array' | 'unknown';
+  placeholder: string;
+  exampleValue?: string;
+  enumValues?: string[];
+  defaultValue?: unknown;
 }
 
 export async function generateCli(
@@ -213,15 +217,114 @@ function extractOptions(tool: ServerToolInfo): GeneratedOption[] {
   const requiredList = Array.isArray(record.required) ? (record.required as string[]) : [];
   return Object.entries(properties).map(([property, descriptor]) => {
     const type = inferType(descriptor);
+    const enumValues = getEnumValues(descriptor);
+    const defaultValue = getDescriptorDefault(descriptor);
+    const placeholder = buildPlaceholder(property, type, enumValues);
+    const exampleValue = buildExampleValue(property, type, enumValues, defaultValue);
     return {
       property,
       cliName: toCliOption(property),
       description: getDescriptorDescription(descriptor),
       required: requiredList.includes(property),
       type,
+      placeholder,
+      exampleValue,
+      enumValues,
+      defaultValue,
     };
   });
 }
+
+function getEnumValues(descriptor: unknown): string[] | undefined {
+  if (!descriptor || typeof descriptor !== 'object') {
+    return undefined;
+  }
+  const record = descriptor as Record<string, unknown>;
+  if (Array.isArray(record.enum)) {
+    const values = record.enum.filter((entry): entry is string => typeof entry === 'string');
+    return values.length > 0 ? values : undefined;
+  }
+  if (record.type === 'array' && typeof record.items === 'object' && record.items !== null) {
+    const nested = record.items as Record<string, unknown>;
+    if (Array.isArray(nested.enum)) {
+      const values = nested.enum.filter((entry): entry is string => typeof entry === 'string');
+      return values.length > 0 ? values : undefined;
+    }
+  }
+  return undefined;
+}
+
+function getDescriptorDefault(descriptor: unknown): unknown {
+  if (!descriptor || typeof descriptor !== 'object') {
+    return undefined;
+  }
+  const record = descriptor as Record<string, unknown>;
+  if (record.default !== undefined) {
+    return record.default;
+  }
+  if (record.type === 'array' && typeof record.items === 'object' && record.items !== null) {
+    return Array.isArray(record.default) ? record.default : undefined;
+  }
+  return undefined;
+}
+
+function buildPlaceholder(property: string, type: GeneratedOption['type'], enumValues?: string[]): string {
+  const normalized = property.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`).replace(/_/g, '-');
+  if (enumValues && enumValues.length > 0) {
+    return `<${normalized}:${enumValues.join('|')}>`;
+  }
+  switch (type) {
+    case 'number':
+      return `<${normalized}:number>`;
+    case 'boolean':
+      return `<${normalized}:true|false>`;
+    case 'array':
+      return `<${normalized}:value1,value2>`;
+    default:
+      return `<${normalized ?? 'value'}>`;
+  }
+}
+
+function buildExampleValue(
+  property: string,
+  type: GeneratedOption['type'],
+  enumValues: string[] | undefined,
+  defaultValue: unknown
+): string | undefined {
+  if (enumValues && enumValues.length > 0) {
+    return enumValues[0] as string;
+  }
+  if (defaultValue !== undefined) {
+    try {
+      return typeof defaultValue === 'string' ? defaultValue : JSON.stringify(defaultValue);
+    } catch {
+      return undefined;
+    }
+  }
+  switch (type) {
+    case 'number':
+      return '1';
+    case 'boolean':
+      return 'true';
+    case 'array':
+      return 'value1,value2';
+    default:
+      if (property.toLowerCase().includes('path')) {
+        return '/path/to/file.md';
+      }
+      if (property.toLowerCase().includes('id')) {
+        return 'example-id';
+      }
+      return undefined;
+  }
+}
+
+export const __test = {
+  getEnumValues,
+  getDescriptorDefault,
+  buildPlaceholder,
+  buildExampleValue,
+};
 
 function inferType(descriptor: unknown): GeneratedOption['type'] {
   if (!descriptor || typeof descriptor !== 'object') {
@@ -608,7 +711,7 @@ function renderToolCommand(
   const description = tool.tool.description ?? `Invoke the ${tool.tool.name} tool.`;
   const optionLines = tool.options.map((option) => renderOption(option)).join('\n');
   const usageParts = tool.options.map((option) =>
-    option.required ? `--${option.cliName} <value>` : `[--${option.cliName} <value>]`
+    option.required ? `--${option.cliName} ${option.placeholder}` : `[--${option.cliName} ${option.placeholder}]`
   );
   usageParts.push('[--raw <json>]');
   const usageLine = usageParts.length ? usageParts.join(' ') : '';
@@ -620,6 +723,10 @@ function renderToolCommand(
     })
     .join('\n\t\t');
   const signature = usageLine ? `${commandName} ${usageLine}` : commandName;
+  const exampleInvocation = buildExampleInvocation(commandName, tool.options);
+  const exampleSnippet = exampleInvocation
+    ? `\n\t.addHelpText('after', () => '\\nExample:\\n  ' + ${exampleInvocation})`
+    : '';
   const block = `program
 \t.command(${JSON.stringify(commandName)})
 \t.summary(${JSON.stringify(signature)})
@@ -645,18 +752,81 @@ ${optionLines ? `\n${optionLines}` : ''}
 \t\t} finally {
 \t\t\tawait runtime.close(serverName).catch(() => {});
 \t\t}
-\t});`;
+\t})${exampleSnippet};`;
   return { block, commandName, signature };
 }
 
 function renderOption(option: GeneratedOption): string {
-  const flag = `--${option.cliName} <value>`;
-  const description = option.description ? option.description : `Set ${option.property}.`;
+  const flag = `--${option.cliName} ${option.placeholder}`;
+  let description = option.description ? option.description : `Set ${option.property}.`;
+  const detailParts: string[] = [];
+  if (option.enumValues && option.enumValues.length > 0) {
+    detailParts.push(`choices: ${option.enumValues.join(', ')}`);
+  }
+  if (option.defaultValue !== undefined) {
+    detailParts.push(`default: ${formatHelpValue(option.defaultValue)}`);
+  }
+  if (option.exampleValue) {
+    detailParts.push(`example: ${option.exampleValue}`);
+  }
+  if (detailParts.length > 0) {
+    description += ` (${detailParts.join('; ')})`;
+  }
   const parser = optionParser(option);
   const base = option.required
     ? `.requiredOption(${JSON.stringify(flag)}, ${JSON.stringify(description)}${parser ? `, ${parser}` : ''})`
     : `.option(${JSON.stringify(flag)}, ${JSON.stringify(description)}${parser ? `, ${parser}` : ''})`;
   return `	${base}`;
+}
+
+function buildExampleInvocation(commandName: string, options: GeneratedOption[]): string | undefined {
+  const required = options.filter((option) => option.required);
+  const chosen = required.length > 0 ? required : options.slice(0, Math.min(options.length, 2));
+  const parts = [commandName, ...chosen.flatMap((option) => [`--${option.cliName}`, pickExampleValue(option)])].filter(
+    Boolean
+  ) as string[];
+  if (parts.length === 0) {
+    return undefined;
+  }
+  return JSON.stringify(parts.join(' '));
+}
+
+function pickExampleValue(option: GeneratedOption): string {
+  if (option.exampleValue) {
+    return option.exampleValue;
+  }
+  if (option.enumValues && option.enumValues.length > 0) {
+    return option.enumValues[0]!;
+  }
+  switch (option.type) {
+    case 'number':
+      return '1';
+    case 'boolean':
+      return 'true';
+    case 'array':
+      return 'value1,value2';
+    default:
+      if (option.property.toLowerCase().includes('path')) {
+        return '/path/to/file.md';
+      }
+      if (option.property.toLowerCase().includes('id')) {
+        return 'example-id';
+      }
+      return option.property;
+  }
+}
+
+function formatHelpValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry)).join(', ');
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (value && typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 function optionParser(option: GeneratedOption): string | undefined {
