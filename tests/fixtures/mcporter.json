@@ -1,78 +1,78 @@
 {
-	"mcpServers": {
-		"chrome-devtools": {
-			"description": "Chrome DevTools protocol bridge for driving local tabs during debugging or automation.",
-			"command": "bash",
-			"args": [
-				"scripts/mcp_stdio_wrapper.sh",
-				"env",
-				"npm_config_loglevel=error",
-				"npx",
-				"-y",
-				"chrome-devtools-mcp@latest"
-			]
-		},
-		"context7": {
-			"description": "Context7 MCP for React documentation lookup.",
-			"baseUrl": "https://mcp.context7.com/mcp"
-		},
-		"linear": {
-			"description": "Hosted Linear MCP; exposes issue search, create, and workflow tooling.",
-			"baseUrl": "https://mcp.linear.app/mcp",
-			"headers": {
-				"Authorization": "Bearer ${LINEAR_API_KEY}"
-			}
-		},
-		"next-devtools": {
-			"description": "Next.js dev server introspection (project metadata, logs, page insights).",
-			"baseUrl": "http://localhost:3000/_next/mcp"
-		},
-		"playwright": {
-			"description": "Playwright MCP server for accessibility-driven automation.",
-			"command": "bash",
-			"args": [
-				"scripts/mcp_stdio_wrapper.sh",
-				"env",
-				"npm_config_loglevel=error",
-				"npx",
-				"-y",
-				"@playwright/mcp@latest"
-			]
-		},
-		"vercel": {
-			"description": "Vercel MCP (requires OAuth).",
-			"baseUrl": "https://mcp.vercel.com",
-			"auth": "oauth",
-			"tokenCacheDir": "~/.mcporter/vercel"
-		},
-		"firecrawl": {
-			"description": "Firecrawl hosted MCP for authenticated scraping and extraction.",
-			"baseUrl": "https://mcp.firecrawl.dev/v2/mcp",
-			"headers": {
-				"Authorization": "Bearer ${FIRECRAWL_API_KEY}"
-			}
-		},
-		"signoz": {
-			"description": "SigNoz Query MCP server (logs, traces, metrics).",
-			"command": "bash",
-			"args": [
-				"scripts/mcp_stdio_wrapper.sh",
-				"env",
-				"NODE_OPTIONS=--require=./scripts/mcp_signoz_retry_patch.cjs",
-				"npm_config_loglevel=error",
-				"npx",
-				"-y",
-				"signoz-mcp-server@latest"
-			],
-			"env": {
-				"SIGNOZ_URL": "${SIGNOZ_URL:-http://localhost:3301}",
-				"SIGNOZ_TOKEN": "${SIGNOZ_TOKEN:-}"
-			}
-		},
-		"shadcn": {
-			"description": "shadcn/ui registry MCP for browsing component recipes.",
-			"baseUrl": "https://www.shadcn.io/api/mcp"
-		}
-	},
-	"imports": []
+  "mcpServers": {
+    "chrome-devtools": {
+      "description": "Chrome DevTools protocol bridge for driving local tabs during debugging or automation.",
+      "command": "bash",
+      "args": [
+        "scripts/mcp_stdio_wrapper.sh",
+        "env",
+        "npm_config_loglevel=error",
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
+    },
+    "context7": {
+      "description": "Context7 MCP for React documentation lookup.",
+      "baseUrl": "https://mcp.context7.com/mcp"
+    },
+    "linear": {
+      "description": "Hosted Linear MCP; exposes issue search, create, and workflow tooling.",
+      "baseUrl": "https://mcp.linear.app/mcp",
+      "headers": {
+        "Authorization": "Bearer ${LINEAR_API_KEY}"
+      }
+    },
+    "next-devtools": {
+      "description": "Next.js dev server introspection (project metadata, logs, page insights).",
+      "baseUrl": "http://localhost:3000/_next/mcp"
+    },
+    "playwright": {
+      "description": "Playwright MCP server for accessibility-driven automation.",
+      "command": "bash",
+      "args": [
+        "scripts/mcp_stdio_wrapper.sh",
+        "env",
+        "npm_config_loglevel=error",
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "vercel": {
+      "description": "Vercel MCP (requires OAuth).",
+      "baseUrl": "https://mcp.vercel.com",
+      "auth": "oauth",
+      "tokenCacheDir": "~/.mcporter/vercel"
+    },
+    "firecrawl": {
+      "description": "Firecrawl hosted MCP for authenticated scraping and extraction.",
+      "baseUrl": "https://mcp.firecrawl.dev/v2/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FIRECRAWL_API_KEY}"
+      }
+    },
+    "signoz": {
+      "description": "SigNoz Query MCP server (logs, traces, metrics).",
+      "command": "bash",
+      "args": [
+        "scripts/mcp_stdio_wrapper.sh",
+        "env",
+        "NODE_OPTIONS=--require=./scripts/mcp_signoz_retry_patch.cjs",
+        "npm_config_loglevel=error",
+        "npx",
+        "-y",
+        "signoz-mcp-server@latest"
+      ],
+      "env": {
+        "SIGNOZ_URL": "${SIGNOZ_URL:-http://localhost:3301}",
+        "SIGNOZ_TOKEN": "${SIGNOZ_TOKEN:-}"
+      }
+    },
+    "shadcn": {
+      "description": "shadcn/ui registry MCP for browsing component recipes.",
+      "baseUrl": "https://www.shadcn.io/api/mcp"
+    }
+  },
+  "imports": []
 }

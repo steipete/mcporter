@@ -1,305 +1,271 @@
-import fs from "node:fs/promises";
-import { createServer } from "node:http";
-import path from "node:path";
-import {
-	McpServer,
-	ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import express from "express";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { z } from "zod";
-import { generateCli } from "../src/generate-cli.js";
+import fs from 'node:fs/promises';
+import { createServer } from 'node:http';
+import path from 'node:path';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import express from 'express';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import { generateCli } from '../src/generate-cli.js';
 
 let baseUrl: URL;
-const tmpDir = path.join(process.cwd(), "tmp", "mcporter-cli-tests");
+const tmpDir = path.join(process.cwd(), 'tmp', 'mcporter-cli-tests');
 
 beforeAll(async () => {
-	await fs.rm(tmpDir, { recursive: true, force: true });
-	await fs.mkdir(tmpDir, { recursive: true });
-	const app = express();
-	app.use(express.json());
+  await fs.rm(tmpDir, { recursive: true, force: true });
+  await fs.mkdir(tmpDir, { recursive: true });
+  const app = express();
+  app.use(express.json());
 
-	const server = new McpServer({ name: "integration", version: "1.0.0" });
-	server.registerTool(
-		"add",
-		{
-			title: "Add",
-			description: "Add two numbers",
-			inputSchema: { a: z.number(), b: z.number() },
-			outputSchema: { result: z.number() },
-		},
-		async ({ a, b }) => {
-			const result = { result: Number(a) + Number(b) };
-			return {
-				content: [{ type: "text", text: JSON.stringify(result) }],
-				structuredContent: result,
-			};
-		},
-	);
-	server.registerResource(
-		"greeting",
-		new ResourceTemplate("greeting://{name}", { list: undefined }),
-		{ title: "Greeting", description: "Simple greeting" },
-		async (uri, { name }) => ({
-			contents: [
-				{
-					uri: uri.href,
-					text: `Hello, ${typeof name === "string" ? name : "friend"}!`,
-				},
-			],
-		}),
-	);
+  const server = new McpServer({ name: 'integration', version: '1.0.0' });
+  server.registerTool(
+    'add',
+    {
+      title: 'Add',
+      description: 'Add two numbers',
+      inputSchema: { a: z.number(), b: z.number() },
+      outputSchema: { result: z.number() },
+    },
+    async ({ a, b }) => {
+      const result = { result: Number(a) + Number(b) };
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result) }],
+        structuredContent: result,
+      };
+    }
+  );
+  server.registerResource(
+    'greeting',
+    new ResourceTemplate('greeting://{name}', { list: undefined }),
+    { title: 'Greeting', description: 'Simple greeting' },
+    async (uri, { name }) => ({
+      contents: [
+        {
+          uri: uri.href,
+          text: `Hello, ${typeof name === 'string' ? name : 'friend'}!`,
+        },
+      ],
+    })
+  );
 
-	app.post("/mcp", async (req, res) => {
-		const transport = new StreamableHTTPServerTransport({
-			sessionIdGenerator: undefined,
-			enableJsonResponse: true,
-		});
-		res.on("close", () => {
-			transport.close().catch(() => {});
-		});
-		await server.connect(transport);
-		await transport.handleRequest(req, res, req.body);
-	});
+  app.post('/mcp', async (req, res) => {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
+    res.on('close', () => {
+      transport.close().catch(() => {});
+    });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  });
 
-	const httpServer = createServer(app);
-	await new Promise<void>((resolve) =>
-		httpServer.listen(0, "127.0.0.1", resolve),
-	);
-	const address = httpServer.address();
-	if (!address || typeof address === "string") {
-		throw new Error("Failed to obtain test server address");
-	}
-	baseUrl = new URL(`http://127.0.0.1:${address.port}/mcp`);
+  const httpServer = createServer(app);
+  await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
+  const address = httpServer.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to obtain test server address');
+  }
+  baseUrl = new URL(`http://127.0.0.1:${address.port}/mcp`);
 
-	afterAll(async () => {
-		await new Promise<void>((resolve) => httpServer.close(() => resolve()));
-	});
+  afterAll(async () => {
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  });
 });
 
-describe("generateCli", () => {
-	it("creates a standalone CLI and bundled executable", async () => {
-		const inline = JSON.stringify({
-			name: "integration",
-			description: "Test integration server",
-			command: baseUrl.toString(),
-			tokenCacheDir: path.join(tmpDir, "schema-cache"),
-		});
-		await fs.mkdir(path.join(tmpDir, "schema-cache"), { recursive: true });
-		const outputPath = path.join(tmpDir, "integration-cli.ts");
-		const exec = await import("node:child_process");
-		const bunAvailable = await hasBun(exec);
-		if (!bunAvailable) {
-			console.warn(
-				"bun is not available on this runner; skipping compilation checks.",
-			);
-			return;
-		}
-		await new Promise<void>((resolve, reject) => {
-			exec.exec("pnpm build", execOptions(), (error) => {
-				if (error) {
-					reject(error);
-					return;
-				}
-				resolve();
-			});
-		});
+describe('generateCli', () => {
+  it('creates a standalone CLI and bundled executable', async () => {
+    const inline = JSON.stringify({
+      name: 'integration',
+      description: 'Test integration server',
+      command: baseUrl.toString(),
+      tokenCacheDir: path.join(tmpDir, 'schema-cache'),
+    });
+    await fs.mkdir(path.join(tmpDir, 'schema-cache'), { recursive: true });
+    const outputPath = path.join(tmpDir, 'integration-cli.ts');
+    const exec = await import('node:child_process');
+    const bunAvailable = await hasBun(exec);
+    if (!bunAvailable) {
+      console.warn('bun is not available on this runner; skipping compilation checks.');
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      exec.exec('pnpm build', execOptions(), (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
 
-		const {
-			outputPath: generated,
-			bundlePath: bundled,
-			compilePath,
-		} = await generateCli({
-			serverRef: inline,
-			outputPath,
-			runtime: "bun",
-			timeoutMs: 5_000,
-			minify: true,
-			compile: true,
-		});
-		const expectedBundlePath = path.join(tmpDir, "integration-cli.js");
-		if (!bundled) {
-			throw new Error("Expected bundled output when --compile is provided");
-		}
-		expect(bundled).toBe(expectedBundlePath);
-		if (!compilePath) {
-			throw new Error("Expected compile output when --compile is provided");
-		}
-		const expectedBinaryPath = path.join(tmpDir, "integration");
-		expect(compilePath).toBe(expectedBinaryPath);
+    const {
+      outputPath: generated,
+      bundlePath: bundled,
+      compilePath,
+    } = await generateCli({
+      serverRef: inline,
+      outputPath,
+      runtime: 'bun',
+      timeoutMs: 5_000,
+      minify: true,
+      compile: true,
+    });
+    const expectedBundlePath = path.join(tmpDir, 'integration-cli.js');
+    if (!bundled) {
+      throw new Error('Expected bundled output when --compile is provided');
+    }
+    expect(bundled).toBe(expectedBundlePath);
+    if (!compilePath) {
+      throw new Error('Expected compile output when --compile is provided');
+    }
+    const expectedBinaryPath = path.join(tmpDir, 'integration');
+    expect(compilePath).toBe(expectedBinaryPath);
 
-		const tsContent = await fs.readFile(generated, "utf8");
-		expect(tsContent).toContain("Standalone CLI generated for the ");
-		const packageJson = JSON.parse(
-			await fs.readFile(new URL("../package.json", import.meta.url), "utf8"),
-		) as { name?: string; version?: string };
-		const generatorLabel = `${packageJson.name ?? "mcporter"}@${packageJson.version ?? "unknown"}`;
-		expect(tsContent).toContain(
-			`Generated by ${packageJson.name ?? "mcporter"}@${packageJson.version ?? "unknown"} — https://github.com/steipete/mcporter`,
-		);
-		expect(await exists(bundled)).toBe(true);
-		expect(await exists(compilePath)).toBe(true);
+    const tsContent = await fs.readFile(generated, 'utf8');
+    expect(tsContent).toContain('Standalone CLI generated for the ');
+    const packageJson = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
+      name?: string;
+      version?: string;
+    };
+    const generatorLabel = `${packageJson.name ?? 'mcporter'}@${packageJson.version ?? 'unknown'}`;
+    expect(tsContent).toContain(
+      `Generated by ${packageJson.name ?? 'mcporter'}@${packageJson.version ?? 'unknown'} — https://github.com/steipete/mcporter`
+    );
+    expect(await exists(bundled)).toBe(true);
+    expect(await exists(compilePath)).toBe(true);
 
-		const { stdout } = await new Promise<{ stdout: string; stderr: string }>(
-			(resolve, reject) => {
-				exec.execFile(
-					bundled,
-					["list-tools"],
-					execOptions(),
-					(
-						error: import("node:child_process").ExecFileException | null,
-						stdout: string,
-						stderr: string,
-					) => {
-						if (error) {
-							reject(error);
-							return;
-						}
-						resolve({ stdout, stderr });
-					},
-				);
-			},
-		);
-		expect(stdout).toContain("Available tools");
+    const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      exec.execFile(
+        bundled,
+        ['list-tools'],
+        execOptions(),
+        (error: import('node:child_process').ExecFileException | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve({ stdout, stderr });
+        }
+      );
+    });
+    expect(stdout).toContain('Available tools');
 
-		const { stdout: helpStdout } = await new Promise<{
-			stdout: string;
-			stderr: string;
-		}>((resolve, reject) => {
-			exec.execFile(
-				bundled,
-				["--help"],
-				execOptions(),
-				(
-					error: import("node:child_process").ExecFileException | null,
-					stdout: string,
-					stderr: string,
-				) => {
-					if (error) {
-						reject(error);
-						return;
-					}
-					resolve({ stdout, stderr });
-				},
-			);
-		});
-		expect(helpStdout).toContain(`Generated by ${generatorLabel}`);
-		expect(helpStdout).toContain("Tools:");
-		expect(helpStdout).toContain("add - Add two numbers");
+    const { stdout: helpStdout } = await new Promise<{
+      stdout: string;
+      stderr: string;
+    }>((resolve, reject) => {
+      exec.execFile(
+        bundled,
+        ['--help'],
+        execOptions(),
+        (error: import('node:child_process').ExecFileException | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve({ stdout, stderr });
+        }
+      );
+    });
+    expect(helpStdout).toContain(`Generated by ${generatorLabel}`);
+    expect(helpStdout).toContain('Tools:');
+    expect(helpStdout).toContain('add - Add two numbers');
 
-		const { stdout: callStdout } = await new Promise<{
-			stdout: string;
-			stderr: string;
-		}>((resolve, reject) => {
-			exec.execFile(
-				bundled,
-				["add", "--a", "2", "--b", "3", "--output", "json"],
-				execOptions(),
-				(
-					error: import("node:child_process").ExecFileException | null,
-					stdout: string,
-					stderr: string,
-				) => {
-					if (error) {
-						reject(error);
-						return;
-					}
-					resolve({ stdout, stderr });
-				},
-			);
-		});
-		expect(callStdout).toContain("result");
+    const { stdout: callStdout } = await new Promise<{
+      stdout: string;
+      stderr: string;
+    }>((resolve, reject) => {
+      exec.execFile(
+        bundled,
+        ['add', '--a', '2', '--b', '3', '--output', 'json'],
+        execOptions(),
+        (error: import('node:child_process').ExecFileException | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve({ stdout, stderr });
+        }
+      );
+    });
+    expect(callStdout).toContain('result');
 
-		const { stdout: compiledHelp } = await new Promise<{
-			stdout: string;
-			stderr: string;
-		}>((resolve, reject) => {
-			exec.execFile(
-				compilePath,
-				["--help"],
-				execOptions(),
-				(
-					error: import("node:child_process").ExecFileException | null,
-					stdout: string,
-					stderr: string,
-				) => {
-					if (error) {
-						reject(error);
-						return;
-					}
-					resolve({ stdout, stderr });
-				},
-			);
-		});
-		expect(compiledHelp).toContain(`Generated by ${generatorLabel}`);
+    const { stdout: compiledHelp } = await new Promise<{
+      stdout: string;
+      stderr: string;
+    }>((resolve, reject) => {
+      exec.execFile(
+        compilePath,
+        ['--help'],
+        execOptions(),
+        (error: import('node:child_process').ExecFileException | null, stdout: string, stderr: string) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve({ stdout, stderr });
+        }
+      );
+    });
+    expect(compiledHelp).toContain(`Generated by ${generatorLabel}`);
 
-		const cachePath = path.join(tmpDir, "schema-cache", "schema.json");
-		const cacheRaw = await fs.readFile(cachePath, "utf8");
-		const cacheData = JSON.parse(cacheRaw) as {
-			tools: Record<string, unknown>;
-		};
-		expect(Object.keys(cacheData.tools)).toContain("add");
+    const cachePath = path.join(tmpDir, 'schema-cache', 'schema.json');
+    const cacheRaw = await fs.readFile(cachePath, 'utf8');
+    const cacheData = JSON.parse(cacheRaw) as {
+      tools: Record<string, unknown>;
+    };
+    expect(Object.keys(cacheData.tools)).toContain('add');
 
-		const derivedUrl = new URL(baseUrl.toString());
-		derivedUrl.hostname = "integration.localhost";
-		const altOutput = path.join(tmpDir, "integration-alt.ts");
-		await new Promise<void>((resolve, reject) => {
-			exec.execFile(
-				"node",
-				[
-					"dist/cli.js",
-					"generate-cli",
-					"--command",
-					derivedUrl.toString(),
-					"--output",
-					altOutput,
-				],
-				execOptions(),
-				(error) => {
-					if (error) {
-						reject(error);
-						return;
-					}
-					resolve();
-				},
-			);
-		});
-		const altContent = await fs.readFile(altOutput, "utf8");
-		expect(altContent).toContain('const embeddedName = "integration"');
+    const derivedUrl = new URL(baseUrl.toString());
+    derivedUrl.hostname = 'integration.localhost';
+    const altOutput = path.join(tmpDir, 'integration-alt.ts');
+    await new Promise<void>((resolve, reject) => {
+      exec.execFile(
+        'node',
+        ['dist/cli.js', 'generate-cli', '--command', derivedUrl.toString(), '--output', altOutput],
+        execOptions(),
+        (error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+    const altContent = await fs.readFile(altOutput, 'utf8');
+    expect(altContent).toContain('const embeddedName = "integration"');
 
-		// --raw path exercised implicitly by runtime when needed; end-to-end call
-		// verification is covered in runtime integration tests.
-	}, 20_000);
+    // --raw path exercised implicitly by runtime when needed; end-to-end call
+    // verification is covered in runtime integration tests.
+  }, 20_000);
 });
 
 async function exists(file: string | undefined): Promise<boolean> {
-	if (!file) return false;
-	try {
-		await fs.access(file);
-		return true;
-	} catch {
-		return false;
-	}
+  if (!file) {
+    return false;
+  }
+  try {
+    await fs.access(file);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function execOptions() {
-	return {
-		cwd: process.cwd(),
-		env: { ...process.env, NODE_NO_WARNINGS: "1" },
-		encoding: "utf8" as const,
-	};
+  return {
+    cwd: process.cwd(),
+    env: { ...process.env, NODE_NO_WARNINGS: '1' },
+    encoding: 'utf8' as const,
+  };
 }
 
-async function hasBun(exec: typeof import("node:child_process")) {
-	return await new Promise<boolean>((resolve) => {
-		exec.execFile(
-			process.env.BUN_BIN ?? "bun",
-			["--version"],
-			execOptions(),
-			(error) => {
-				resolve(!error);
-			},
-		);
-	});
+async function hasBun(exec: typeof import('node:child_process')) {
+  return await new Promise<boolean>((resolve) => {
+    exec.execFile(process.env.BUN_BIN ?? 'bun', ['--version'], execOptions(), (error) => {
+      resolve(!error);
+    });
+  });
 }

@@ -57,7 +57,9 @@ function parseArgs(argv: string[]): CliOptions {
     switch (key) {
       case 'session': {
         const value = optionPart[i + 1];
-        if (!value) usage('--session requires a value');
+        if (!value) {
+          usage('--session requires a value');
+        }
         session = value;
         i += 1;
         break;
@@ -90,8 +92,12 @@ function parseArgs(argv: string[]): CliOptions {
   }
 
   const message = literalPart.join(' ').trim();
-  if (!session) usage('Missing --session');
-  if (!message) usage('Missing message (provide text after -- separator)');
+  if (!session) {
+    usage('Missing --session');
+  }
+  if (!message) {
+    usage('Missing message (provide text after -- separator)');
+  }
 
   return { session, entry, escape: shouldEscape, waitMs, message };
 }
@@ -99,11 +105,15 @@ function parseArgs(argv: string[]): CliOptions {
 function runTmux(args: string[], allowFailure = false): string {
   const result = spawnSync('tmux', args, { encoding: 'utf8' });
   if (result.error) {
-    if (allowFailure) return '';
+    if (allowFailure) {
+      return '';
+    }
     throw result.error;
   }
   if (result.status !== 0) {
-    if (allowFailure) return result.stderr?.trim() ?? '';
+    if (allowFailure) {
+      return result.stderr?.trim() ?? '';
+    }
     throw new Error(`tmux ${args.join(' ')} failed: ${result.stderr?.trim()}`);
   }
   return result.stdout?.trimEnd() ?? '';
@@ -150,11 +160,10 @@ async function sendMessage(options: CliOptions): Promise<void> {
       break;
     case 'none':
       break;
-    default:
-      {
-        const _never: never = options.entry;
-        usage("Unsupported entry mode");
-      }
+    default: {
+      const _never: never = options.entry;
+      usage('Unsupported entry mode');
+    }
   }
 
   await sleep(600);

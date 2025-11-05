@@ -1,124 +1,112 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { parse as parseToml } from "@iarna/toml";
-import { z } from "zod";
-import { expandHome } from "./env.js";
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { parse as parseToml } from '@iarna/toml';
+import { z } from 'zod';
+import { expandHome } from './env.js';
 
-const ImportKindSchema = z.enum([
-	"cursor",
-	"claude-code",
-	"claude-desktop",
-	"codex",
-]);
+const ImportKindSchema = z.enum(['cursor', 'claude-code', 'claude-desktop', 'codex']);
 
-const DEFAULT_IMPORTS: ImportKind[] = [
-	"cursor",
-	"claude-code",
-	"claude-desktop",
-	"codex",
-];
+const DEFAULT_IMPORTS: ImportKind[] = ['cursor', 'claude-code', 'claude-desktop', 'codex'];
 
 const RawEntrySchema = z.object({
-	description: z.string().optional(),
-	baseUrl: z.string().optional(),
-	base_url: z.string().optional(),
-	url: z.string().optional(),
-	serverUrl: z.string().optional(),
-	server_url: z.string().optional(),
-	command: z.union([z.string(), z.array(z.string())]).optional(),
-	executable: z.string().optional(),
-	args: z.array(z.string()).optional(),
-	headers: z.record(z.string()).optional(),
-	env: z.record(z.string()).optional(),
-	auth: z.string().optional(),
-	tokenCacheDir: z.string().optional(),
-	token_cache_dir: z.string().optional(),
-	clientName: z.string().optional(),
-	client_name: z.string().optional(),
-	oauthRedirectUrl: z.string().optional(),
-	oauth_redirect_url: z.string().optional(),
-	bearerToken: z.string().optional(),
-	bearer_token: z.string().optional(),
-	bearerTokenEnv: z.string().optional(),
-	bearer_token_env: z.string().optional(),
+  description: z.string().optional(),
+  baseUrl: z.string().optional(),
+  base_url: z.string().optional(),
+  url: z.string().optional(),
+  serverUrl: z.string().optional(),
+  server_url: z.string().optional(),
+  command: z.union([z.string(), z.array(z.string())]).optional(),
+  executable: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  headers: z.record(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+  auth: z.string().optional(),
+  tokenCacheDir: z.string().optional(),
+  token_cache_dir: z.string().optional(),
+  clientName: z.string().optional(),
+  client_name: z.string().optional(),
+  oauthRedirectUrl: z.string().optional(),
+  oauth_redirect_url: z.string().optional(),
+  bearerToken: z.string().optional(),
+  bearer_token: z.string().optional(),
+  bearerTokenEnv: z.string().optional(),
+  bearer_token_env: z.string().optional(),
 });
 
 const RawConfigSchema = z.object({
-	mcpServers: z.record(RawEntrySchema),
-	imports: z.array(ImportKindSchema).optional(),
+  mcpServers: z.record(RawEntrySchema),
+  imports: z.array(ImportKindSchema).optional(),
 });
 
 export interface HttpCommand {
-	readonly kind: "http";
-	readonly url: URL;
-	readonly headers?: Record<string, string>;
+  readonly kind: 'http';
+  readonly url: URL;
+  readonly headers?: Record<string, string>;
 }
 
 export interface StdioCommand {
-	readonly kind: "stdio";
-	readonly command: string;
-	readonly args: string[];
-	readonly cwd: string;
+  readonly kind: 'stdio';
+  readonly command: string;
+  readonly args: string[];
+  readonly cwd: string;
 }
 
 export type CommandSpec = HttpCommand | StdioCommand;
 
 export interface ServerDefinition {
-	readonly name: string;
-	readonly description?: string;
-	readonly command: CommandSpec;
-	readonly env?: Record<string, string>;
-	readonly auth?: string;
-	readonly tokenCacheDir?: string;
-	readonly clientName?: string;
-	readonly oauthRedirectUrl?: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly command: CommandSpec;
+  readonly env?: Record<string, string>;
+  readonly auth?: string;
+  readonly tokenCacheDir?: string;
+  readonly clientName?: string;
+  readonly oauthRedirectUrl?: string;
 }
 
 export interface LoadConfigOptions {
-	readonly configPath?: string;
-	readonly rootDir?: string;
+  readonly configPath?: string;
+  readonly rootDir?: string;
 }
 
-export async function loadServerDefinitions(
-	options: LoadConfigOptions = {},
-): Promise<ServerDefinition[]> {
-	const rootDir = options.rootDir ?? process.cwd();
-	const configPath = resolveConfigPath(options.configPath, rootDir);
-	const config = await readConfigFile(configPath);
+export async function loadServerDefinitions(options: LoadConfigOptions = {}): Promise<ServerDefinition[]> {
+  const rootDir = options.rootDir ?? process.cwd();
+  const configPath = resolveConfigPath(options.configPath, rootDir);
+  const config = await readConfigFile(configPath);
 
-	const merged = new Map<string, { raw: RawEntry; baseDir: string }>();
+  const merged = new Map<string, { raw: RawEntry; baseDir: string }>();
 
-	const imports = config.imports ?? DEFAULT_IMPORTS;
-	for (const importKind of imports) {
-		const candidates = pathsForImport(importKind, rootDir);
-		for (const candidate of candidates) {
-			const resolved = expandHome(candidate);
-			const entries = await readExternalEntries(resolved);
-			if (!entries) {
-				continue;
-			}
-			for (const [name, rawEntry] of entries) {
-				if (merged.has(name)) {
-					continue;
-				}
-				merged.set(name, { raw: rawEntry, baseDir: path.dirname(resolved) });
-			}
-		}
-	}
+  const imports = config.imports ?? DEFAULT_IMPORTS;
+  for (const importKind of imports) {
+    const candidates = pathsForImport(importKind, rootDir);
+    for (const candidate of candidates) {
+      const resolved = expandHome(candidate);
+      const entries = await readExternalEntries(resolved);
+      if (!entries) {
+        continue;
+      }
+      for (const [name, rawEntry] of entries) {
+        if (merged.has(name)) {
+          continue;
+        }
+        merged.set(name, { raw: rawEntry, baseDir: path.dirname(resolved) });
+      }
+    }
+  }
 
-	for (const [name, entryRaw] of Object.entries(config.mcpServers)) {
-		const parsed = RawEntrySchema.parse(entryRaw);
-		merged.set(name, { raw: parsed, baseDir: rootDir });
-	}
+  for (const [name, entryRaw] of Object.entries(config.mcpServers)) {
+    const parsed = RawEntrySchema.parse(entryRaw);
+    merged.set(name, { raw: parsed, baseDir: rootDir });
+  }
 
-	const servers: ServerDefinition[] = [];
-	for (const [name, { raw, baseDir: entryBaseDir }] of merged) {
-		servers.push(normalizeServerEntry(name, raw, entryBaseDir));
-	}
+  const servers: ServerDefinition[] = [];
+  for (const [name, { raw, baseDir: entryBaseDir }] of merged) {
+    servers.push(normalizeServerEntry(name, raw, entryBaseDir));
+  }
 
-	return servers;
+  return servers;
 }
 
 type ImportKind = z.infer<typeof ImportKindSchema>;
@@ -127,381 +115,384 @@ type RawConfig = z.infer<typeof RawConfigSchema>;
 
 type RawEntryMap = Map<string, RawEntry>;
 
-function resolveConfigPath(
-	configPath: string | undefined,
-	rootDir: string,
-): string {
-	if (configPath) {
-		return path.resolve(configPath);
-	}
-	return path.resolve(rootDir, "config", "mcporter.json");
+function resolveConfigPath(configPath: string | undefined, rootDir: string): string {
+  if (configPath) {
+    return path.resolve(configPath);
+  }
+  return path.resolve(rootDir, 'config', 'mcporter.json');
 }
 
 async function readConfigFile(configPath: string): Promise<RawConfig> {
-	const buffer = await fs.readFile(configPath, "utf8");
-	return RawConfigSchema.parse(JSON.parse(buffer));
+  const buffer = await fs.readFile(configPath, 'utf8');
+  return RawConfigSchema.parse(JSON.parse(buffer));
 }
 
-function normalizeServerEntry(
-	name: string,
-	raw: RawEntry,
-	baseDir: string,
-): ServerDefinition {
-	const description = raw.description;
-	const env = raw.env ? { ...raw.env } : undefined;
-	const auth = normalizeAuth(raw.auth);
-	const tokenCacheDir = normalizePath(raw.tokenCacheDir ?? raw.token_cache_dir);
-	const clientName = raw.clientName ?? raw.client_name;
-	const oauthRedirectUrl =
-		raw.oauthRedirectUrl ?? raw.oauth_redirect_url ?? undefined;
-	const headers = buildHeaders(raw);
+function normalizeServerEntry(name: string, raw: RawEntry, baseDir: string): ServerDefinition {
+  const description = raw.description;
+  const env = raw.env ? { ...raw.env } : undefined;
+  const auth = normalizeAuth(raw.auth);
+  const tokenCacheDir = normalizePath(raw.tokenCacheDir ?? raw.token_cache_dir);
+  const clientName = raw.clientName ?? raw.client_name;
+  const oauthRedirectUrl = raw.oauthRedirectUrl ?? raw.oauth_redirect_url ?? undefined;
+  const headers = buildHeaders(raw);
 
-	const httpUrl = getUrl(raw);
-	const stdio = getCommand(raw);
+  const httpUrl = getUrl(raw);
+  const stdio = getCommand(raw);
 
-	let command: CommandSpec;
+  let command: CommandSpec;
 
-	if (httpUrl) {
-		command = {
-			kind: "http",
-			url: new URL(httpUrl),
-			headers,
-		};
-	} else if (stdio) {
-		command = {
-			kind: "stdio",
-			command: stdio.command,
-			args: stdio.args,
-			cwd: baseDir,
-		};
-	} else {
-		throw new Error(
-			`Server '${name}' is missing a baseUrl/url or command definition in mcporter.json`,
-		);
-	}
+  if (httpUrl) {
+    command = {
+      kind: 'http',
+      url: new URL(httpUrl),
+      headers,
+    };
+  } else if (stdio) {
+    command = {
+      kind: 'stdio',
+      command: stdio.command,
+      args: stdio.args,
+      cwd: baseDir,
+    };
+  } else {
+    throw new Error(`Server '${name}' is missing a baseUrl/url or command definition in mcporter.json`);
+  }
 
-	const resolvedTokenCacheDir =
-		auth === "oauth"
-			? (tokenCacheDir ?? path.join(os.homedir(), ".mcporter", name))
-			: (tokenCacheDir ?? undefined);
+  const resolvedTokenCacheDir =
+    auth === 'oauth' ? (tokenCacheDir ?? path.join(os.homedir(), '.mcporter', name)) : (tokenCacheDir ?? undefined);
 
-	return {
-		name,
-		description,
-		command,
-		env,
-		auth,
-		tokenCacheDir: resolvedTokenCacheDir,
-		clientName,
-		oauthRedirectUrl,
-	};
+  return {
+    name,
+    description,
+    command,
+    env,
+    auth,
+    tokenCacheDir: resolvedTokenCacheDir,
+    clientName,
+    oauthRedirectUrl,
+  };
 }
 
 function normalizeAuth(auth: string | undefined): string | undefined {
-	if (!auth) {
-		return undefined;
-	}
-	if (auth.toLowerCase() === "oauth") {
-		return "oauth";
-	}
-	return undefined;
+  if (!auth) {
+    return undefined;
+  }
+  if (auth.toLowerCase() === 'oauth') {
+    return 'oauth';
+  }
+  return undefined;
 }
 
 function normalizePath(input: string | undefined): string | undefined {
-	if (!input) {
-		return undefined;
-	}
-	return expandHome(input);
+  if (!input) {
+    return undefined;
+  }
+  return expandHome(input);
 }
 
 function getUrl(raw: RawEntry): string | undefined {
-	return (
-		raw.baseUrl ??
-		raw.base_url ??
-		raw.url ??
-		raw.serverUrl ??
-		raw.server_url ??
-		undefined
-	);
+  return raw.baseUrl ?? raw.base_url ?? raw.url ?? raw.serverUrl ?? raw.server_url ?? undefined;
 }
 
-function getCommand(
-	raw: RawEntry,
-): { command: string; args: string[] } | undefined {
-	const commandValue = raw.command ?? raw.executable;
-	if (Array.isArray(commandValue)) {
-		if (commandValue.length === 0 || typeof commandValue[0] !== "string") {
-			return undefined;
-		}
-		return { command: commandValue[0], args: commandValue.slice(1) };
-	}
-	if (typeof commandValue === "string" && commandValue.length > 0) {
-		const args = Array.isArray(raw.args) ? raw.args : [];
-		return { command: commandValue, args };
-	}
-	return undefined;
+function getCommand(raw: RawEntry): { command: string; args: string[] } | undefined {
+  const commandValue = raw.command ?? raw.executable;
+  if (Array.isArray(commandValue)) {
+    if (commandValue.length === 0 || typeof commandValue[0] !== 'string') {
+      return undefined;
+    }
+    return { command: commandValue[0], args: commandValue.slice(1) };
+  }
+  if (typeof commandValue === 'string' && commandValue.length > 0) {
+    const args = Array.isArray(raw.args) ? raw.args : [];
+    if (args.length > 0) {
+      return { command: commandValue, args };
+    }
+    const tokens = parseCommandString(commandValue);
+    if (tokens.length === 0) {
+      return undefined;
+    }
+    const [commandToken, ...rest] = tokens;
+    if (!commandToken) {
+      return undefined;
+    }
+    return { command: commandToken, args: rest };
+  }
+  return undefined;
 }
 
 function buildHeaders(raw: RawEntry): Record<string, string> | undefined {
-	const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {};
 
-	if (raw.headers) {
-		Object.assign(headers, raw.headers);
-	}
+  if (raw.headers) {
+    Object.assign(headers, raw.headers);
+  }
 
-	const bearerToken = raw.bearerToken ?? raw.bearer_token;
-	if (bearerToken) {
-		headers.Authorization = `Bearer ${bearerToken}`;
-	}
+  const bearerToken = raw.bearerToken ?? raw.bearer_token;
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
 
-	const bearerTokenEnv = raw.bearerTokenEnv ?? raw.bearer_token_env;
-	if (bearerTokenEnv) {
-		headers.Authorization = `$env:${bearerTokenEnv}`;
-	}
+  const bearerTokenEnv = raw.bearerTokenEnv ?? raw.bearer_token_env;
+  if (bearerTokenEnv) {
+    headers.Authorization = `$env:${bearerTokenEnv}`;
+  }
 
-	return Object.keys(headers).length > 0 ? headers : undefined;
+  return Object.keys(headers).length > 0 ? headers : undefined;
 }
 
-async function readExternalEntries(
-	filePath: string,
-): Promise<RawEntryMap | null> {
-	if (!(await fileExists(filePath))) {
-		return null;
-	}
+async function readExternalEntries(filePath: string): Promise<RawEntryMap | null> {
+  if (!(await fileExists(filePath))) {
+    return null;
+  }
 
-	if (filePath.endsWith(".toml")) {
-		const buffer = await fs.readFile(filePath, "utf8");
-		const parsed = parseToml(buffer) as Record<string, unknown>;
-		return extractFromCodexConfig(parsed);
-	}
+  if (filePath.endsWith('.toml')) {
+    const buffer = await fs.readFile(filePath, 'utf8');
+    const parsed = parseToml(buffer) as Record<string, unknown>;
+    return extractFromCodexConfig(parsed);
+  }
 
-	const buffer = await fs.readFile(filePath, "utf8");
-	const parsed = JSON.parse(buffer) as unknown;
-	return extractFromMcpJson(parsed);
+  const buffer = await fs.readFile(filePath, 'utf8');
+  const parsed = JSON.parse(buffer) as unknown;
+  return extractFromMcpJson(parsed);
 }
 
 function extractFromMcpJson(raw: unknown): RawEntryMap {
-	const map = new Map<string, RawEntry>();
-	if (!raw || typeof raw !== "object") {
-		return map;
-	}
+  const map = new Map<string, RawEntry>();
+  if (!raw || typeof raw !== 'object') {
+    return map;
+  }
 
-	const container =
-		"mcpServers" in raw && raw.mcpServers && typeof raw.mcpServers === "object"
-			? (raw.mcpServers as Record<string, unknown>)
-			: (raw as Record<string, unknown>);
+  const container =
+    'mcpServers' in raw && raw.mcpServers && typeof raw.mcpServers === 'object'
+      ? (raw.mcpServers as Record<string, unknown>)
+      : (raw as Record<string, unknown>);
 
-	for (const [name, value] of Object.entries(container)) {
-		if (!value || typeof value !== "object") {
-			continue;
-		}
-		const entry = convertExternalEntry(value as Record<string, unknown>);
-		if (entry) {
-			map.set(name, entry);
-		}
-	}
+  for (const [name, value] of Object.entries(container)) {
+    if (!value || typeof value !== 'object') {
+      continue;
+    }
+    const entry = convertExternalEntry(value as Record<string, unknown>);
+    if (entry) {
+      map.set(name, entry);
+    }
+  }
 
-	return map;
+  return map;
 }
 
 function extractFromCodexConfig(raw: Record<string, unknown>): RawEntryMap {
-	const map = new Map<string, RawEntry>();
-	const serversRaw = raw.mcp_servers;
-	if (!serversRaw || typeof serversRaw !== "object") {
-		return map;
-	}
+  const map = new Map<string, RawEntry>();
+  const serversRaw = raw.mcp_servers;
+  if (!serversRaw || typeof serversRaw !== 'object') {
+    return map;
+  }
 
-	for (const [name, value] of Object.entries(
-		serversRaw as Record<string, unknown>,
-	)) {
-		if (!value || typeof value !== "object") {
-			continue;
-		}
-		const entry = convertExternalEntry(value as Record<string, unknown>);
-		if (entry) {
-			map.set(name, entry);
-		}
-	}
+  for (const [name, value] of Object.entries(serversRaw as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') {
+      continue;
+    }
+    const entry = convertExternalEntry(value as Record<string, unknown>);
+    if (entry) {
+      map.set(name, entry);
+    }
+  }
 
-	return map;
+  return map;
 }
 
 function convertExternalEntry(value: Record<string, unknown>): RawEntry | null {
-	const result: Record<string, unknown> = {};
+  const result: Record<string, unknown> = {};
 
-	if (typeof value.description === "string") {
-		result.description = value.description;
-	}
+  if (typeof value.description === 'string') {
+    result.description = value.description;
+  }
 
-	const env = asStringRecord(value.env);
-	if (env) {
-		result.env = env;
-	}
+  const env = asStringRecord(value.env);
+  if (env) {
+    result.env = env;
+  }
 
-	const headers = buildExternalHeaders(value);
-	if (headers) {
-		result.headers = headers;
-	}
+  const headers = buildExternalHeaders(value);
+  if (headers) {
+    result.headers = headers;
+  }
 
-	const auth = asString(value.auth);
-	if (auth) {
-		result.auth = auth;
-	}
+  const auth = asString(value.auth);
+  if (auth) {
+    result.auth = auth;
+  }
 
-	const tokenCacheDir = asString(
-		value.tokenCacheDir ?? value.token_cache_dir ?? value.token_cacheDir,
-	);
-	if (tokenCacheDir) {
-		result.tokenCacheDir = tokenCacheDir;
-	}
+  const tokenCacheDir = asString(value.tokenCacheDir ?? value.token_cache_dir ?? value.token_cacheDir);
+  if (tokenCacheDir) {
+    result.tokenCacheDir = tokenCacheDir;
+  }
 
-	const clientName = asString(value.clientName ?? value.client_name);
-	if (clientName) {
-		result.clientName = clientName;
-	}
+  const clientName = asString(value.clientName ?? value.client_name);
+  if (clientName) {
+    result.clientName = clientName;
+  }
 
-	const url = asString(
-		value.baseUrl ??
-			value.base_url ??
-			value.url ??
-			value.serverUrl ??
-			value.server_url,
-	);
-	if (url) {
-		result.baseUrl = url;
-	}
+  const url = asString(value.baseUrl ?? value.base_url ?? value.url ?? value.serverUrl ?? value.server_url);
+  if (url) {
+    result.baseUrl = url;
+  }
 
-	const commandValue = value.command ?? value.executable;
-	if (
-		Array.isArray(commandValue) &&
-		commandValue.every((item) => typeof item === "string")
-	) {
-		result.command = commandValue;
-	} else if (typeof commandValue === "string") {
-		result.command = commandValue;
-	}
+  const commandValue = value.command ?? value.executable;
+  if (Array.isArray(commandValue) && commandValue.every((item) => typeof item === 'string')) {
+    result.command = commandValue;
+  } else if (typeof commandValue === 'string') {
+    result.command = commandValue;
+  }
 
-	if (
-		Array.isArray(value.args) &&
-		value.args.every((item) => typeof item === "string")
-	) {
-		result.args = value.args;
-	}
+  if (Array.isArray(value.args) && value.args.every((item) => typeof item === 'string')) {
+    result.args = value.args;
+  }
 
-	const parsed = RawEntrySchema.safeParse(result);
-	return parsed.success ? parsed.data : null;
+  const parsed = RawEntrySchema.safeParse(result);
+  return parsed.success ? parsed.data : null;
 }
 
-function buildExternalHeaders(
-	record: Record<string, unknown>,
-): Record<string, string> | undefined {
-	const headers: Record<string, string> = {};
+function buildExternalHeaders(record: Record<string, unknown>): Record<string, string> | undefined {
+  const headers: Record<string, string> = {};
 
-	const literalHeaders = asStringRecord(record.headers);
-	if (literalHeaders) {
-		Object.assign(headers, literalHeaders);
-	}
+  const literalHeaders = asStringRecord(record.headers);
+  if (literalHeaders) {
+    Object.assign(headers, literalHeaders);
+  }
 
-	const bearerToken = asString(record.bearerToken ?? record.bearer_token);
-	if (bearerToken) {
-		headers.Authorization = `Bearer ${bearerToken}`;
-	}
+  const bearerToken = asString(record.bearerToken ?? record.bearer_token);
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
 
-	const bearerTokenEnv = asString(
-		record.bearerTokenEnv ?? record.bearer_token_env,
-	);
-	if (bearerTokenEnv) {
-		headers.Authorization = `$env:${bearerTokenEnv}`;
-	}
+  const bearerTokenEnv = asString(record.bearerTokenEnv ?? record.bearer_token_env);
+  if (bearerTokenEnv) {
+    headers.Authorization = `$env:${bearerTokenEnv}`;
+  }
 
-	return Object.keys(headers).length > 0 ? headers : undefined;
+  return Object.keys(headers).length > 0 ? headers : undefined;
 }
 
 function pathsForImport(kind: ImportKind, rootDir: string): string[] {
-	switch (kind) {
-		case "cursor":
-			return [
-				path.resolve(rootDir, ".cursor", "mcp.json"),
-				defaultCursorUserConfigPath(),
-			];
-		case "claude-code":
-			return [
-				path.resolve(rootDir, ".claude", "mcp.json"),
-				path.join(os.homedir(), ".claude", "mcp.json"),
-				path.join(os.homedir(), ".claude.json"),
-			];
-		case "claude-desktop":
-			return [defaultClaudeDesktopConfigPath()];
-		case "codex":
-			return [path.join(os.homedir(), ".codex", "config.toml")];
-		default:
-			return [];
-	}
+  switch (kind) {
+    case 'cursor':
+      return [path.resolve(rootDir, '.cursor', 'mcp.json'), defaultCursorUserConfigPath()];
+    case 'claude-code':
+      return [
+        path.resolve(rootDir, '.claude', 'mcp.json'),
+        path.join(os.homedir(), '.claude', 'mcp.json'),
+        path.join(os.homedir(), '.claude.json'),
+      ];
+    case 'claude-desktop':
+      return [defaultClaudeDesktopConfigPath()];
+    case 'codex':
+      return [path.join(os.homedir(), '.codex', 'config.toml')];
+    default:
+      return [];
+  }
 }
 
 function defaultCursorUserConfigPath(): string {
-	if (process.platform === "darwin") {
-		return path.join(os.homedir(), ".cursor", "mcp.json");
-	}
-	if (process.platform === "win32") {
-		const appData =
-			process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-		return path.join(appData, "Cursor", "mcp.json");
-	}
-	return path.join(os.homedir(), ".config", "Cursor", "mcp.json");
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), '.cursor', 'mcp.json');
+  }
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(appData, 'Cursor', 'mcp.json');
+  }
+  return path.join(os.homedir(), '.config', 'Cursor', 'mcp.json');
 }
 
 function defaultClaudeDesktopConfigPath(): string {
-	if (process.platform === "darwin") {
-		return path.join(
-			os.homedir(),
-			"Library",
-			"Application Support",
-			"Claude",
-			"claude_desktop_config.json",
-		);
-	}
-	if (process.platform === "win32") {
-		const appData =
-			process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-		return path.join(appData, "Claude", "claude_desktop_config.json");
-	}
-	return path.join(
-		os.homedir(),
-		".config",
-		"Claude",
-		"claude_desktop_config.json",
-	);
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  }
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(appData, 'Claude', 'claude_desktop_config.json');
+  }
+  return path.join(os.homedir(), '.config', 'Claude', 'claude_desktop_config.json');
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
-	try {
-		await fs.access(filePath);
-		return true;
-	} catch {
-		return false;
-	}
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function asString(value: unknown): string | undefined {
-	return typeof value === "string" && value.length > 0 ? value : undefined;
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 function asStringRecord(input: unknown): Record<string, string> | undefined {
-	if (!input || typeof input !== "object") {
-		return undefined;
-	}
-	const record: Record<string, string> = {};
-	for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-		if (typeof value === "string") {
-			record[key] = value;
-		} else if (typeof value === "number" || typeof value === "boolean") {
-			record[key] = String(value);
-		}
-	}
-	return Object.keys(record).length > 0 ? record : undefined;
+  if (!input || typeof input !== 'object') {
+    return undefined;
+  }
+  const record: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (typeof value === 'string') {
+      record[key] = value;
+    } else if (typeof value === 'number' || typeof value === 'boolean') {
+      record[key] = String(value);
+    }
+  }
+  return Object.keys(record).length > 0 ? record : undefined;
 }
 
 export function toFileUrl(filePath: string): URL {
-	return pathToFileURL(filePath);
+  return pathToFileURL(filePath);
+}
+
+function parseCommandString(value: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escapeNext = false;
+
+  for (const char of value.trim()) {
+    if (escapeNext) {
+      current += char;
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+
+    if (char === ' ' && !inSingleQuote && !inDoubleQuote) {
+      if (current.length > 0) {
+        result.push(current);
+        current = '';
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (escapeNext) {
+    current += '\\';
+  }
+
+  if (current.length > 0) {
+    result.push(current);
+  }
+
+  return result;
 }

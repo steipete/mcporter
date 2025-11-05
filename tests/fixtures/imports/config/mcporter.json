@@ -1,11 +1,11 @@
 {
-	"imports": ["cursor", "claude-code", "codex"],
-	"mcpServers": {
-		"local-only": {
-			"baseUrl": "https://local.example/mcp"
-		},
-		"cursor-only": {
-			"baseUrl": "https://local.override/cursor"
-		}
-	}
+  "imports": ["cursor", "claude-code", "codex"],
+  "mcpServers": {
+    "local-only": {
+      "baseUrl": "https://local.example/mcp"
+    },
+    "cursor-only": {
+      "baseUrl": "https://local.override/cursor"
+    }
+  }
 }

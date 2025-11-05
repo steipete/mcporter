@@ -1,14 +1,14 @@
 {
-	"mcpServers": {
-		"shared": {
-			"baseUrl": "https://cursor.local/mcp"
-		},
-		"cursor-only": {
-			"command": "cursor-cli",
-			"args": ["--flag"],
-			"env": {
-				"CURSOR_FLAG": "1"
-			}
-		}
-	}
+  "mcpServers": {
+    "shared": {
+      "baseUrl": "https://cursor.local/mcp"
+    },
+    "cursor-only": {
+      "command": "cursor-cli",
+      "args": ["--flag"],
+      "env": {
+        "CURSOR_FLAG": "1"
+      }
+    }
+  }
 }

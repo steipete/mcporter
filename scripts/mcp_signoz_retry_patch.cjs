@@ -4,6 +4,6 @@
 // without throwing if teams reuse the same entry.
 
 module.exports = {
-	// Export a no-op hook so consumers can keep requiring this patch file safely.
-	onRetry() {},
+  // Export a no-op hook so consumers can keep requiring this patch file safely.
+  onRetry() {},
 };
