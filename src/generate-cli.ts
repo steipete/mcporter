@@ -667,7 +667,9 @@ function renderToolCommand(tool: ToolMetadata, defaultTimeout: number): string {
 	);
 	usageParts.push("[--raw <json>]");
 	const usageLine = usageParts.length ? usageParts.join(" ") : "";
-	const usageSnippet = usageLine ? `.usage(${JSON.stringify(usageLine)})\n` : "";
+	const usageSnippet = usageLine
+		? `.usage(${JSON.stringify(usageLine)})\n`
+		: "";
 	const buildArgs = tool.options
 		.map((option) => {
 			const source = `cmdOpts.${option.property}`;
