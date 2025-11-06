@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- _No changes yet._
+
+## [0.2.0] - 2025-11-06
+
 - Added non-blocking `mcporter list` output with per-server status and parallel discovery.
 - Introduced `mcporter auth <server>` helper (and library API support) so OAuth flows don’t hang list calls.
 - Set the default list timeout to 30 s (configurable via `MCPORTER_LIST_TIMEOUT`).

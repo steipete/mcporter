@@ -12,7 +12,7 @@ import { resolveEnvPlaceholders, resolveEnvValue, withEnvOverrides } from './env
 import { createOAuthSession, type OAuthSession } from './oauth.js';
 
 const PACKAGE_NAME = 'mcporter';
-const CLIENT_VERSION = '0.1.0';
+const CLIENT_VERSION = '0.2.0';
 
 export interface RuntimeOptions {
   readonly configPath?: string;
