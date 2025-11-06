@@ -16,7 +16,7 @@ summary: 'Plan for the mcporter package replacing the Sweetistics pnpm MCP helpe
   - `createRuntime()` for shared connections (list/call tools, resolve resources).
   - `callOnce()` convenience matching today’s single-call flow.
   - Typed utilities for env/header resolution and stdio command execution.
-- CLI entry point (`npx mcporter list|call`) built on the same runtime.
+- CLI entry point (`npx mcporter list|call`) built on the same runtime with configurable log levels (`--log-level` flag, `MCPORTER_LOG_LEVEL` env) defaulting to `warn`.
 - CLI generator (`npx mcporter generate-cli`) that emits standalone CLIs (plain TypeScript or bundled JS) with embedded schemas and Commander-based subcommands, targeting Node or Bun.
 - Test harness using the Sweetistics MCP fixtures to validate every configured server definition.
 - Documentation: README, usage examples, migration guide for replacing `pnpm mcp:*`.
