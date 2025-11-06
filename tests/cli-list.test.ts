@@ -103,13 +103,17 @@ describe('CLI list classification', () => {
     await handleList(runtime, []);
 
     const logLines = logSpy.mock.calls.map((call) => call.join(' '));
-    expect(logLines.some((line) => line.includes("vercel — Vercel MCP (auth required — run 'mcporter auth vercel'"))).toBe(true);
+    expect(
+      logLines.some((line) => line.includes("vercel — Vercel MCP (auth required — run 'mcporter auth vercel'"))
+    ).toBe(true);
     expect(logLines.some((line) => line.includes("github (auth required — run 'mcporter auth github'"))).toBe(true);
     const nextDevtoolsLineFound = logLines.some(
       (line) => line.startsWith('- next-devtools') && line.includes('offline — unable to reach server')
     );
     expect(nextDevtoolsLineFound).toBe(true);
-    expect(logLines.some((line) => line.includes('obsidian') && line.includes('offline — unable to reach server'))).toBe(true);
+    expect(
+      logLines.some((line) => line.includes('obsidian') && line.includes('offline — unable to reach server'))
+    ).toBe(true);
 
     const summaryLine = logLines.find((line) => line.startsWith('✔ Listed'));
     expect(summaryLine).toBeDefined();

@@ -53,7 +53,10 @@ export async function handleList(
     console.log(`Listing ${servers.length} server(s) (per-server timeout: ${perServerTimeoutSeconds}s)`);
     const spinner = supportsSpinner ? ora(`Discovering ${servers.length} server(s)…`).start() : undefined;
     const spinnerActive = Boolean(spinner);
-    const renderedResults: Array<{ line: string; summary: string } | undefined> = new Array(servers.length);
+    const renderedResults: Array<ReturnType<typeof renderServerListRow> | undefined> = Array.from(
+      { length: servers.length },
+      () => undefined
+    );
     let completedCount = 0;
 
     const tasks = servers.map((server, index) =>

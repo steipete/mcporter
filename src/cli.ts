@@ -1,56 +1,22 @@
 #!/usr/bin/env node
-import type { ChildProcess } from 'node:child_process';
-import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
+import { handleCall as runHandleCall } from './cli/call-command.js';
 import { handleList } from './cli/list-command.js';
 import { formatSourceSuffix } from './cli/list-format.js';
+import { getActiveLogger, getActiveLogLevel, logError, logInfo, logWarn, setLogLevel } from './cli/logger-context.js';
 import { formatPathForDisplay } from './cli/path-utils.js';
-import { resolveCallTimeout, withTimeout } from './cli/timeouts.js';
+import { DEBUG_HANG, dumpActiveHandles, terminateChildProcesses } from './cli/runtime-debug.js';
 import type { CliArtifactMetadata, SerializedServerDefinition } from './cli-metadata.js';
 import { readCliMetadata } from './cli-metadata.js';
 import { generateCli } from './generate-cli.js';
-import {
-  createPrefixedConsoleLogger,
-  type Logger,
-  type LogLevel,
-  parseLogLevel,
-  resolveLogLevelFromEnv,
-} from './logging.js';
-import { type CallResult, createCallResult } from './result-utils.js';
+import { parseLogLevel } from './logging.js';
 import { createRuntime } from './runtime.js';
 
+export { handleCall, parseCallArguments } from './cli/call-command.js';
 export { extractListFlags, handleList } from './cli/list-command.js';
 export { resolveCallTimeout } from './cli/timeouts.js';
 
 type FlagMap = Partial<Record<string, string>>;
-type OutputFormat = 'auto' | 'text' | 'markdown' | 'json' | 'raw';
-
-let activeLogLevel: LogLevel = resolveLogLevelFromEnv();
-let activeLogger: Logger = createPrefixedConsoleLogger('mcporter', activeLogLevel);
-
-type ProcessWithHandles = NodeJS.Process & {
-  _getActiveHandles?: () => unknown[];
-  _getActiveRequests?: () => unknown[];
-};
-
-// logInfo forwards informational messages through the active logger.
-function logInfo(message: string) {
-  // Log an info-level message with the standard prefix.
-  activeLogger.info(message);
-}
-
-// logWarn emits warning-level messages with the standard prefix.
-function logWarn(message: string) {
-  // Emit a warning with the standard prefix.
-  activeLogger.warn(message);
-}
-
-// logError reports errors and optional failure objects through the active logger.
-function logError(message: string, error?: unknown) {
-  // Output an error message and optional error object.
-  activeLogger.error(message, error);
-}
-
 // main parses CLI flags and dispatches to list/call commands.
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -62,8 +28,8 @@ async function main(): Promise<void> {
   const globalFlags = extractFlags(argv, ['--config', '--root', '--log-level']);
   if (globalFlags['--log-level']) {
     try {
-      activeLogLevel = parseLogLevel(globalFlags['--log-level'], activeLogLevel);
-      activeLogger = createPrefixedConsoleLogger('mcporter', activeLogLevel);
+      const parsedLevel = parseLogLevel(globalFlags['--log-level'], getActiveLogLevel());
+      setLogLevel(parsedLevel);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logError(message, error instanceof Error ? error : undefined);
@@ -95,7 +61,7 @@ async function main(): Promise<void> {
   const runtime = await createRuntime({
     configPath: globalFlags['--config'],
     rootDir: globalFlags['--root'],
-    logger: activeLogger,
+    logger: getActiveLogger(),
   });
 
   try {
@@ -105,7 +71,7 @@ async function main(): Promise<void> {
     }
 
     if (command === 'call') {
-      await handleCall(runtime, argv);
+      await runHandleCall(runtime, argv);
       return;
     }
 
@@ -302,8 +268,6 @@ function expectValue(flag: string, value: string | undefined): string {
   }
   return value;
 }
-
-const DEBUG_HANG = process.env.MCPORTER_DEBUG_HANG === '1';
 
 // handleGenerateCli parses flags and generates the requested standalone CLI.
 async function handleGenerateCli(args: string[], globalFlags: FlagMap): Promise<void> {
@@ -649,510 +613,6 @@ function inferNameFromCommand(command: string): string | undefined {
   const firstToken = trimmed.split(/\s+/)[0] ?? trimmed;
   const candidate = firstToken.split(/[\\/]/).pop() ?? firstToken;
   return candidate.replace(/\.[a-z0-9]+$/i, '');
-}
-
-// handleCall invokes a tool, prints JSON, and optionally tails logs.
-// handleCall invokes a tool, prints the response, and optionally tails logs.
-export async function handleCall(runtime: Awaited<ReturnType<typeof createRuntime>>, args: string[]): Promise<void> {
-  const parsed = parseCallArguments(args);
-  const selector = parsed.selector;
-  let server = parsed.server;
-  let tool = parsed.tool;
-
-  if (selector && !server && selector.includes('.')) {
-    const [left, right] = selector.split('.', 2);
-    server = left;
-    tool = right;
-  } else if (selector && !server) {
-    server = selector;
-  } else if (selector && !tool) {
-    tool = selector;
-  }
-
-  if (!server) {
-    throw new Error('Missing server name. Provide it via <server>.<tool> or --server.');
-  }
-  if (!tool) {
-    throw new Error('Missing tool name. Provide it via <server>.<tool> or --tool.');
-  }
-
-  const timeoutMs = resolveCallTimeout(parsed.timeoutMs);
-  let result: unknown;
-  try {
-    result = await withTimeout(runtime.callTool(server, tool, { args: parsed.args }), timeoutMs);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Timeout') {
-      const timeoutDisplay = `${timeoutMs}ms`;
-      await runtime.close(server).catch(() => {});
-      throw new Error(
-        `Call to ${server}.${tool} timed out after ${timeoutDisplay}. Override MCPORTER_CALL_TIMEOUT or pass --timeout to adjust.`
-      );
-    }
-    throw error;
-  }
-
-  const wrapped = createCallResult(result);
-  printCallOutput(wrapped, result, parsed.output);
-  tailLogIfRequested(result, parsed.tailLog);
-  dumpActiveHandles('after call (formatted result)');
-}
-
-function printCallOutput<T>(wrapped: CallResult<T>, raw: T, format: OutputFormat): void {
-  switch (format) {
-    case 'raw': {
-      printRaw(raw);
-      return;
-    }
-    case 'json': {
-      const jsonValue = wrapped.json();
-      if (jsonValue !== null && attemptPrintJson(jsonValue)) {
-        return;
-      }
-      printRaw(raw);
-      return;
-    }
-    case 'markdown': {
-      const markdown = wrapped.markdown();
-      if (typeof markdown === 'string') {
-        console.log(markdown);
-        return;
-      }
-      const text = wrapped.text();
-      if (typeof text === 'string') {
-        console.log(text);
-        return;
-      }
-      const jsonValue = wrapped.json();
-      if (jsonValue !== null && attemptPrintJson(jsonValue)) {
-        return;
-      }
-      printRaw(raw);
-      return;
-    }
-    case 'text': {
-      const text = wrapped.text();
-      if (typeof text === 'string') {
-        console.log(text);
-        return;
-      }
-      const markdown = wrapped.markdown();
-      if (typeof markdown === 'string') {
-        console.log(markdown);
-        return;
-      }
-      const jsonValue = wrapped.json();
-      if (jsonValue !== null && attemptPrintJson(jsonValue)) {
-        return;
-      }
-      printRaw(raw);
-      return;
-    }
-    default: {
-      const jsonValue = wrapped.json();
-      if (jsonValue !== null && attemptPrintJson(jsonValue)) {
-        return;
-      }
-      const markdown = wrapped.markdown();
-      if (typeof markdown === 'string') {
-        console.log(markdown);
-        return;
-      }
-      const text = wrapped.text();
-      if (typeof text === 'string') {
-        console.log(text);
-        return;
-      }
-      printRaw(raw);
-    }
-  }
-}
-
-function attemptPrintJson(value: unknown): boolean {
-  if (value === undefined) {
-    return false;
-  }
-  try {
-    if (value === null) {
-      console.log('null');
-    } else {
-      console.log(JSON.stringify(value, null, 2));
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function printRaw(raw: unknown): void {
-  if (typeof raw === 'string') {
-    console.log(raw);
-    return;
-  }
-  if (raw === null) {
-    console.log('null');
-    return;
-  }
-  if (raw === undefined) {
-    console.log('undefined');
-    return;
-  }
-  if (typeof raw === 'bigint') {
-    console.log(raw.toString());
-    return;
-  }
-  try {
-    const serialized = JSON.stringify(raw, null, 2);
-    if (serialized === undefined) {
-      console.log(String(raw));
-    } else {
-      console.log(serialized);
-    }
-  } catch {
-    console.log(String(raw));
-  }
-}
-
-// describeHandle produces readable metadata for active handles in debug output.
-function describeHandle(handle: unknown): string {
-  if (!handle || (typeof handle !== 'object' && typeof handle !== 'function')) {
-    return String(handle);
-  }
-  const ctor = (handle as { constructor?: { name?: string } }).constructor?.name ?? typeof handle;
-  if (ctor === 'Socket') {
-    try {
-      const socket = handle as {
-        localAddress?: string;
-        localPort?: number;
-        remoteAddress?: string;
-        remotePort?: number;
-      };
-      const parts: string[] = ['Socket'];
-      if (socket.localAddress) {
-        parts.push(`local=${socket.localAddress}:${socket.localPort ?? '?'}`);
-      }
-      if (socket.remoteAddress) {
-        parts.push(`remote=${socket.remoteAddress}:${socket.remotePort ?? '?'}`);
-      }
-      if (typeof (socket as { address?: () => { address: string; port: number } | null }).address === 'function') {
-        const addr = (socket as { address?: () => { address: string; port: number } | null }).address?.();
-        if (addr) {
-          parts.push(`addr=${addr.address}:${addr.port}`);
-        }
-      }
-      const host = (handle as { _host?: string })._host;
-      if (host) {
-        parts.push(`host=${host}`);
-      }
-      const pipeName = (handle as { path?: string }).path;
-      if (pipeName) {
-        parts.push(`path=${pipeName}`);
-      }
-      const extraKeys = Reflect.ownKeys(handle as Record<string | symbol, unknown>)
-        .filter((key) => typeof key === 'string' && key.startsWith('_') && !['_events', '_eventsCount'].includes(key))
-        .slice(0, 4) as string[];
-      if (extraKeys.length > 0) {
-        parts.push(`keys=${extraKeys.join(',')}`);
-      }
-      return parts.join(' ');
-    } catch {
-      return ctor;
-    }
-  }
-  if (typeof handle === 'object') {
-    const pid = (handle as { pid?: number }).pid;
-    if (typeof pid === 'number') {
-      return `${ctor} (pid=${pid})`;
-    }
-    const fd = (handle as { fd?: number }).fd;
-    if (typeof fd === 'number') {
-      return `${ctor} (fd=${fd})`;
-    }
-  }
-  return ctor;
-}
-
-// dumpActiveHandles logs currently active handles/requests when debugging hangs.
-function dumpActiveHandles(label: string): void {
-  if (!DEBUG_HANG) {
-    return;
-  }
-  const proc = process as ProcessWithHandles;
-  const activeHandles = proc._getActiveHandles?.() ?? [];
-  const activeRequests = proc._getActiveRequests?.() ?? [];
-  logInfo(`[debug] ${label}: ${activeHandles.length} active handle(s), ${activeRequests.length} request(s)`);
-  for (const handle of activeHandles) {
-    logInfo(`[debug] handle => ${describeHandle(handle)}`);
-  }
-  for (const request of activeRequests) {
-    logInfo(`[debug] request => ${describeHandle(request)}`);
-  }
-}
-
-// terminateChildProcesses aggressively cleans up lingering child processes.
-function terminateChildProcesses(label: string): void {
-  const proc = process as ProcessWithHandles;
-  const handles = proc._getActiveHandles?.() ?? [];
-  for (const handle of handles) {
-    if (!handle || typeof handle !== 'object') {
-      continue;
-    }
-    const candidate = handle as ChildProcess;
-    const ctor = (handle as { constructor?: { name?: string } }).constructor?.name ?? '';
-    if (ctor === 'Socket' && typeof (handle as { destroy?: () => void }).destroy === 'function') {
-      try {
-        (handle as { destroy?: () => void }).destroy?.();
-        if (typeof (handle as { unref?: () => void }).unref === 'function') {
-          (handle as { unref?: () => void }).unref?.();
-        }
-      } catch {
-        // ignore
-      }
-    }
-    if (typeof (candidate.stdout as { destroy?: () => void } | undefined)?.destroy === 'function') {
-      try {
-        (candidate.stdout as { destroy?: () => void }).destroy?.();
-      } catch {
-        // ignore
-      }
-    }
-    if (typeof (candidate.stderr as { destroy?: () => void } | undefined)?.destroy === 'function') {
-      try {
-        (candidate.stderr as { destroy?: () => void }).destroy?.();
-      } catch {
-        // ignore
-      }
-    }
-    if (typeof (candidate.stdin as { end?: () => void } | undefined)?.end === 'function') {
-      try {
-        (candidate.stdin as { end?: () => void }).end?.();
-      } catch {
-        // ignore
-      }
-    }
-    if (DEBUG_HANG) {
-      logInfo(
-        `[debug] inspect child handle: ${describeHandle(handle)} kill=${typeof candidate.kill} killed=${
-          (candidate as { killed?: boolean }).killed ?? false
-        }`
-      );
-    }
-    if (typeof candidate.unref === 'function') {
-      candidate.unref();
-      if (DEBUG_HANG) {
-        logInfo(`[debug] called unref on child pid=${candidate.pid ?? 'unknown'} (${label})`);
-      }
-    }
-    if (typeof candidate.kill === 'function' && typeof candidate.pid === 'number' && !candidate.killed) {
-      const killed = candidate.kill('SIGKILL');
-      if (DEBUG_HANG) {
-        const outcome = killed ? 'killed' : 'kill-failed';
-        logWarn(`[debug] forcibly ${outcome} child pid=${candidate.pid} (${label})`);
-      }
-    }
-  }
-}
-
-interface CallArgsParseResult {
-  selector?: string;
-  server?: string;
-  tool?: string;
-  args: Record<string, unknown>;
-  tailLog: boolean;
-  output: OutputFormat;
-  timeoutMs?: number;
-}
-
-// parseCallArguments supports selectors, JSON payloads, and key=value args.
-function isOutputFormat(value: string): value is OutputFormat {
-  return value === 'auto' || value === 'text' || value === 'markdown' || value === 'json' || value === 'raw';
-}
-
-export function parseCallArguments(args: string[]): CallArgsParseResult {
-  const result: CallArgsParseResult = { args: {}, tailLog: false, output: 'auto' };
-  const positional: string[] = [];
-  let index = 0;
-  while (index < args.length) {
-    const token = args[index];
-    if (!token) {
-      index += 1;
-      continue;
-    }
-    if (token === '--server' || token === '--mcp') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error(`Flag '${token}' requires a value.`);
-      }
-      result.server = value;
-      index += 2;
-      continue;
-    }
-    if (token === '--tool') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error(`Flag '${token}' requires a value.`);
-      }
-      result.tool = value;
-      index += 2;
-      continue;
-    }
-    if (token === '--output') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('--output requires a format (auto|text|markdown|json|raw).');
-      }
-      if (!isOutputFormat(value)) {
-        throw new Error('--output format must be one of: auto, text, markdown, json, raw.');
-      }
-      result.output = value;
-      args.splice(index, 2);
-      continue;
-    }
-    if (token === '--raw') {
-      result.output = 'raw';
-      args.splice(index, 1);
-      continue;
-    }
-    if (token === '--args') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('--args requires JSON payload.');
-      }
-      try {
-        const decoded = JSON.parse(value);
-        if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) {
-          throw new Error('--args must be a JSON object.');
-        }
-        Object.assign(result.args, decoded);
-      } catch (error) {
-        throw new Error(`Unable to parse --args: ${(error as Error).message}`);
-      }
-      index += 2;
-      continue;
-    }
-    if (token === '--tail-log') {
-      result.tailLog = true;
-      index += 1;
-      continue;
-    }
-    if (token === '--timeout') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('--timeout requires a value (milliseconds).');
-      }
-      const parsed = Number.parseInt(value, 10);
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        throw new Error('--timeout must be a positive integer (milliseconds).');
-      }
-      result.timeoutMs = parsed;
-      index += 2;
-      continue;
-    }
-    positional.push(token);
-    index += 1;
-  }
-
-  if (positional.length > 0) {
-    result.selector = positional.shift();
-  }
-
-  const nextPositional = positional[0];
-  if (!result.tool && nextPositional !== undefined && !nextPositional.includes('=')) {
-    result.tool = positional.shift();
-  }
-
-  for (const token of positional) {
-    const [key, raw] = token.split('=', 2);
-    if (!key || raw === undefined) {
-      throw new Error(`Argument '${token}' must be key=value format.`);
-    }
-    const value = coerceValue(raw);
-    if ((key === 'tool' || key === 'command') && !result.tool) {
-      if (typeof value !== 'string') {
-        throw new Error("Argument 'tool' must be a string value.");
-      }
-      result.tool = value as string;
-      continue;
-    }
-    if (key === 'server' && !result.server) {
-      if (typeof value !== 'string') {
-        throw new Error("Argument 'server' must be a string value.");
-      }
-      result.server = value as string;
-      continue;
-    }
-    result.args[key] = value;
-  }
-  return result;
-}
-
-// coerceValue tries to cast string tokens into JS primitives or JSON.
-function coerceValue(value: string): unknown {
-  const trimmed = value.trim();
-  if (trimmed === '') {
-    return '';
-  }
-  if (trimmed === 'true' || trimmed === 'false') {
-    return trimmed === 'true';
-  }
-  if (trimmed === 'null' || trimmed === 'none') {
-    return null;
-  }
-  if (!Number.isNaN(Number(trimmed)) && trimmed === `${Number(trimmed)}`) {
-    return Number(trimmed);
-  }
-  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return trimmed;
-    }
-  }
-  return trimmed;
-}
-
-// tailLogIfRequested prints the final lines of any referenced log files.
-function tailLogIfRequested(result: unknown, enabled: boolean): void {
-  // Bail out immediately when tailing is disabled.
-  if (!enabled) {
-    return;
-  }
-  const candidates: string[] = [];
-  if (typeof result === 'string') {
-    const idx = result.indexOf(':');
-    if (idx !== -1) {
-      const candidate = result.slice(idx + 1).trim();
-      if (candidate) {
-        candidates.push(candidate);
-      }
-    }
-  }
-  if (result && typeof result === 'object') {
-    const possibleKeys = ['logPath', 'logFile', 'logfile', 'path'];
-    for (const key of possibleKeys) {
-      const value = (result as Record<string, unknown>)[key];
-      if (typeof value === 'string') {
-        candidates.push(value);
-      }
-    }
-  }
-
-  for (const candidate of candidates) {
-    if (!fs.existsSync(candidate)) {
-      logWarn(`Log path not found: ${candidate}`);
-      continue;
-    }
-    try {
-      const content = fs.readFileSync(candidate, 'utf8');
-      const lines = content.trimEnd().split(/\r?\n/);
-      const tail = lines.slice(-20);
-      console.log(`--- tail ${candidate} ---`);
-      for (const line of tail) {
-        console.log(line);
-      }
-    } catch (error) {
-      logWarn(`Failed to read log file ${candidate}: ${(error as Error).message}`);
-    }
-  }
 }
 
 // buildGenerateCliCommand reconstructs the generate-cli invocation for logging/dry runs.

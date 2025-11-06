@@ -430,10 +430,7 @@ function pathsForImport(kind: ImportKind, rootDir: string): string[] {
     case 'windsurf':
       return [defaultWindsurfConfigPath()];
     case 'vscode':
-      return [
-        path.resolve(rootDir, '.vscode', 'mcp.json'),
-        ...defaultVscodeConfigPaths(),
-      ];
+      return [path.resolve(rootDir, '.vscode', 'mcp.json'), ...defaultVscodeConfigPaths()];
     default:
       return [];
   }
@@ -482,10 +479,7 @@ function defaultVscodeConfigPaths(): string[] {
   }
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming');
-    return [
-      path.join(appData, 'Code', 'User', 'mcp.json'),
-      path.join(appData, 'Code - Insiders', 'User', 'mcp.json'),
-    ];
+    return [path.join(appData, 'Code', 'User', 'mcp.json'), path.join(appData, 'Code - Insiders', 'User', 'mcp.json')];
   }
   return [
     path.join(os.homedir(), '.config', 'Code', 'User', 'mcp.json'),

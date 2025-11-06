@@ -99,15 +99,7 @@ describe('config imports', () => {
     expect(vscodeOnly?.command.kind === 'stdio' ? vscodeOnly.command.command : undefined).toBe('code-mcp');
     expect(vscodeOnly?.source).toEqual({
       kind: 'import',
-      path: path.join(
-        FIXTURE_ROOT,
-        'home',
-        'Library',
-        'Application Support',
-        'Code',
-        'User',
-        'mcp.json'
-      ),
+      path: path.join(FIXTURE_ROOT, 'home', 'Library', 'Application Support', 'Code', 'User', 'mcp.json'),
     });
   });
 });

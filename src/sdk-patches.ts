@@ -14,7 +14,11 @@ interface StderrMeta {
   chunks: string[];
   command?: string;
   code?: number | null;
-  listeners: Array<{ stream: NodeJS.EventEmitter & { removeListener?: (event: string, listener: (...args: unknown[]) => void) => void }; event: string; handler: (...args: unknown[]) => void }>;
+  listeners: Array<{
+    stream: NodeJS.EventEmitter & { removeListener?: (event: string, listener: (...args: unknown[]) => void) => void };
+    event: string;
+    handler: (...args: unknown[]) => void;
+  }>;
 }
 
 const STDERR_BUFFERS = new WeakMap<MaybeChildProcess, StderrMeta>();
@@ -69,7 +73,10 @@ function waitForChildClose(child: MaybeChildProcess | undefined, timeoutMs: numb
   if (!child) {
     return Promise.resolve();
   }
-  if ((child as { exitCode?: number | null }).exitCode !== null && (child as { exitCode?: number | null }).exitCode !== undefined) {
+  if (
+    (child as { exitCode?: number | null }).exitCode !== null &&
+    (child as { exitCode?: number | null }).exitCode !== undefined
+  ) {
     return Promise.resolve();
   }
   return new Promise((resolve) => {
@@ -92,11 +99,11 @@ function waitForChildClose(child: MaybeChildProcess | undefined, timeoutMs: numb
       child.removeListener('exit', finish);
       child.removeListener('close', finish);
       child.removeListener('error', finish);
-       try {
-         child.removeListener?.('error', swallowProcessError);
-       } catch {
-         // ignore
-       }
+      try {
+        child.removeListener?.('error', swallowProcessError);
+      } catch {
+        // ignore
+      }
       if (timer) {
         clearTimeout(timer);
       }
@@ -203,7 +210,7 @@ function patchStdioClose(): void {
 
     child.unref?.();
 
-  if (meta) {
+    if (meta) {
       // Remove any listeners we attached during start to avoid leaks before printing.
       for (const { stream, event, handler } of meta.listeners) {
         try {
@@ -238,7 +245,8 @@ function patchStdioStart(): void {
     return;
   }
 
-  const originalStart = StdioClientTransport.prototype.start;
+  // eslint-disable-next-line @typescript-eslint/unbound-method -- capturing the original method before patching
+  const originalStart: typeof StdioClientTransport.prototype.start = StdioClientTransport.prototype.start;
 
   StdioClientTransport.prototype.start = async function patchedStart(this: unknown): Promise<void> {
     const transport = this as unknown as {
@@ -282,12 +290,16 @@ function patchStdioStart(): void {
         (targetStream as NodeJS.EventEmitter).on('data', handleChunk);
         (targetStream as NodeJS.EventEmitter).on('error', swallowError);
         meta.listeners.push({
-          stream: targetStream as NodeJS.EventEmitter & { removeListener?: (event: string, listener: (...args: unknown[]) => void) => void },
+          stream: targetStream as NodeJS.EventEmitter & {
+            removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+          },
           event: 'data',
           handler: handleChunk,
         });
         meta.listeners.push({
-          stream: targetStream as NodeJS.EventEmitter & { removeListener?: (event: string, listener: (...args: unknown[]) => void) => void },
+          stream: targetStream as NodeJS.EventEmitter & {
+            removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+          },
           event: 'error',
           handler: swallowError,
         });

@@ -1,5 +1,5 @@
-import { execFile } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
@@ -11,13 +11,8 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { CallToolRequest, ListResourcesRequest } from '@modelcontextprotocol/sdk/types.js';
 import { loadServerDefinitions, type ServerDefinition } from './config.js';
 import { resolveEnvPlaceholders, resolveEnvValue, withEnvOverrides } from './env.js';
+import { createPrefixedConsoleLogger, type Logger, type LogLevel, resolveLogLevelFromEnv } from './logging.js';
 import { createOAuthSession, type OAuthSession } from './oauth.js';
-import {
-  createPrefixedConsoleLogger,
-  resolveLogLevelFromEnv,
-  type Logger,
-  type LogLevel,
-} from './logging.js';
 import './sdk-patches.js';
 
 const PACKAGE_NAME = 'mcporter';
@@ -412,7 +407,10 @@ async function ensureProcessTerminated(logger: RuntimeLogger, pid: number): Prom
 
 // waitForChildClose resolves once the child process emits close/error or the timeout elapses.
 async function waitForChildClose(child: ChildProcess, timeoutMs: number): Promise<void> {
-  if ((child as { exitCode?: number | null }).exitCode !== null && (child as { exitCode?: number | null }).exitCode !== undefined) {
+  if (
+    (child as { exitCode?: number | null }).exitCode !== null &&
+    (child as { exitCode?: number | null }).exitCode !== undefined
+  ) {
     return;
   }
   await new Promise<void>((resolve) => {

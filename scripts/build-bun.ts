@@ -60,10 +60,7 @@ function requireValue(flag: string, value: string | undefined): string {
 // main orchestrates the Bun compile flow for the mcporter binary.
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
-  const projectRoot = path.join(
-    fs.realpathSync(path.dirname(new URL(import.meta.url).pathname)),
-    '..'
-  );
+  const projectRoot = path.join(fs.realpathSync(path.dirname(new URL(import.meta.url).pathname)), '..');
   const distDir = path.join(projectRoot, 'dist-bun');
   if (!fs.existsSync(distDir)) {
     fs.mkdirSync(distDir, { recursive: true });
@@ -73,13 +70,7 @@ async function main(): Promise<void> {
     ? path.resolve(options.output)
     : path.join(distDir, options.target ? `mcporter-${options.target}` : 'mcporter');
 
-  const buildArgs = [
-    'build',
-    path.join(projectRoot, 'src/cli.ts'),
-    '--compile',
-    '--outfile',
-    outputPath,
-  ];
+  const buildArgs = ['build', path.join(projectRoot, 'src/cli.ts'), '--compile', '--outfile', outputPath];
 
   if (options.minify) {
     buildArgs.push('--minify');
