@@ -65,6 +65,7 @@ summary: 'Plan for the mcporter package replacing the Sweetistics pnpm MCP helpe
    - Implement connection cache, tool invocation, resource helpers.
 3. **CLI Surface**
    - Implement `list` (with optional schema) and `call` commands.
+   - Render tool metadata as pseudo-TypeScript blocks with dimmed comments, enum unions, and format hints so operators can copy signatures directly into function-call syntax.
    - Ensure output parity with existing helper.
    - Add `generate-cli` for standalone/bundled CLIs with embedded schema caching.
 4. **Testing & Fixtures**

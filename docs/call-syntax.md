@@ -25,7 +25,7 @@ create_comment({
 - Required parameters appear without `?`, optional parameters use `?`.
 - Literal unions (enums) render as `"json" | "markdown"`.
 - Known formats (e.g. ISO 8601) surface inline: `dueDate?: string /* ISO 8601 */`.
-- Each parameter’s schema description is shown as a `//` comment.
+- Each parameter’s schema description is shown as a dimmed `//` comment to match the CLI styling.
 - After the tool list you’ll see an `Examples:` block with a few ready-to-run calls; the legacy flag form is still accepted but no longer printed for every tool.
 
 ## Function-Call Syntax Details

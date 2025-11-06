@@ -227,7 +227,7 @@ function formatToolSignatureBlock(name: string, description: string, options: Ge
 function formatParameterSignature(option: GeneratedOption): string {
   const typeAnnotation = formatTypeAnnotation(option);
   const optionalSuffix = option.required ? '' : '?';
-  const commentSuffix = option.description ? `  // ${option.description}` : '';
+  const commentSuffix = option.description ? `  ${dimText(`// ${option.description}`)}` : '';
   return `${option.property}${optionalSuffix}: ${typeAnnotation}${commentSuffix}`;
 }
 
