@@ -91,7 +91,7 @@ export async function handleList(
           console.log(rendered.line);
           const remaining = servers.length - completedCount;
           if (remaining > 0) {
-            // Report remaining count instead of parroting the last server to avoid noisy duplicate lines.
+            // Switch the spinner to a count-only message so we avoid re-printing the last server name over and over.
             spinner.text = `Listing servers… ${completedCount}/${servers.length} · remaining: ${remaining}`;
             spinner.start();
           }
@@ -136,17 +136,18 @@ export async function handleList(
   const timeoutMs = flags.timeoutMs ?? LIST_TIMEOUT_MS;
   const sourcePath = formatSourceSuffix(definition.source, true);
   console.log(boldText(target));
-  console.log(`  ${dimText('Description:')} ${definition.description ?? '<none>'}`);
   const transportSummary =
     definition.command.kind === 'http'
       ? `HTTP ${definition.command.url instanceof URL ? definition.command.url.href : String(definition.command.url)}`
       : `STDIO ${[definition.command.command, ...(definition.command.args ?? [])].join(' ')}`.trim();
-  console.log(`  ${dimText('Transport:')} ${transportSummary}`);
+  const serverSummary = `${definition.description ?? '<none>'}${transportSummary ? ` [${transportSummary}]` : ''}`;
+  console.log(`  ${serverSummary}`);
   if (sourcePath) {
     console.log(`  Source: ${sourcePath}`);
   }
   try {
-    const tools = await withTimeout(runtime.listTools(target, { includeSchema: flags.schema }), timeoutMs);
+    // Always request schemas so we can render CLI-style parameter hints without re-querying per tool.
+    const tools = await withTimeout(runtime.listTools(target, { includeSchema: true }), timeoutMs);
     if (tools.length === 0) {
       console.log('  Tools: <none>');
       return;
@@ -186,6 +187,7 @@ function printToolDetail(
   console.log(`    ${dimText('Usage:')} ${usageParts.join(' ')}`);
 
   if (includeSchema && tool.inputSchema) {
+    // Schemas can be large — indenting keeps multi-line JSON legible without disrupting surrounding output.
     console.log(indent(JSON.stringify(tool.inputSchema, null, 2), '      '));
   }
   console.log('');

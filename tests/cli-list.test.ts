@@ -127,26 +127,31 @@ describe('CLI list classification', () => {
 
   it('prints detailed usage for single server listings', async () => {
     const { handleList } = await cliModulePromise;
+    const listToolsSpy = vi.fn((_name: string, options?: { includeSchema?: boolean }) =>
+      Promise.resolve([
+        {
+          name: 'add',
+          description: 'Add two numbers',
+          inputSchema: options?.includeSchema
+            ? {
+                type: 'object',
+                properties: {
+                  a: { type: 'number' },
+                  format: { type: 'string', enum: ['json', 'markdown'] },
+                },
+                required: ['a'],
+              }
+            : undefined,
+        },
+      ])
+    );
     const runtime = {
       getDefinition: (name: string) => ({
         name,
+        description: 'Test integration server',
         command: { kind: 'http', url: new URL('https://example.com/mcp') },
       }),
-      listTools: () =>
-        Promise.resolve([
-          {
-            name: 'add',
-            description: 'Add two numbers',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                a: { type: 'number' },
-                format: { type: 'string', enum: ['json', 'markdown'] },
-              },
-              required: ['a'],
-            },
-          },
-        ]),
+      listTools: listToolsSpy,
     } as unknown as Awaited<ReturnType<typeof import('../src/runtime.js')['createRuntime']>>;
 
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -155,10 +160,10 @@ describe('CLI list classification', () => {
 
     const logLines = logSpy.mock.calls.map((call) => call.join(' '));
     expect(logLines.some((line) => line.includes('calculator'))).toBe(true);
-    expect(logLines.some((line) => line.includes('Description:'))).toBe(true);
-    expect(logLines.some((line) => line.includes('Transport:'))).toBe(true);
+    expect(logLines.some((line) => line.includes('Test integration server [HTTP https://example.com/mcp]'))).toBe(true);
     expect(logLines.some((line) => line.includes('Add two numbers'))).toBe(true);
     expect(logLines.some((line) => line.includes('Usage: mcporter call calculator.add --a <a:number>'))).toBe(true);
+    expect(listToolsSpy).toHaveBeenCalledWith('calculator', { includeSchema: true });
 
     logSpy.mockRestore();
   });
