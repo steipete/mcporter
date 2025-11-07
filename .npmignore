@@ -1,0 +1,21 @@
+node_modules
+.DS_Store
+*.bun-build
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+
+# TypeScript build artifacts
+*.tsbuildinfo
+*.tsbuildinfo.*
+coverage
+build
+out
+tmp
+
+dist-bun
