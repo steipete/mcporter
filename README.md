@@ -60,6 +60,39 @@ linear - Hosted Linear MCP; exposes issue search, create, and workflow tooling.
   // optional (11): limit, before, after, orderBy, initiativeId, ...
 ```
 
+Here’s what that looks like for Vercel when you run `npx mcporter list vercel`:
+
+```ts
+vercel - Vercel MCP (requires OAuth).
+
+  /**
+   * Search the Vercel documentation.
+   * Use this tool to answer any questions about Vercel’s platform, features, and best practices,
+   * including:
+   * - Core Concepts: Projects, Deployments, Git Integration, Preview Deployments, Environments
+   * - Frontend & Frameworks: Next.js, SvelteKit, Nuxt, Astro, Remix, frameworks configuration and
+   *   optimization
+   * - APIs: REST API, Vercel SDK, Build Output API
+   * - Compute: Fluid Compute, Functions, Routing Middleware, Cron Jobs, OG Image Generation, Sandbox,
+   *   Data Cache
+   * - AI: Vercel AI SDK, AI Gateway, MCP, v0
+   * - Performance & Delivery: Edge Network, Caching, CDN, Image Optimization, Headers, Redirects,
+   *   Rewrites
+   * - Pricing: Plans, Spend Management, Billing
+   * - Security: Audit Logs, Firewall, Bot Management, BotID, OIDC, RBAC, Secure Compute, 2FA
+   * - Storage: Blog, Edge Config
+   *
+   * @param topic Topic to focus the documentation search on (e.g., 'routing', 'data-fetching').
+   * @param tokens? Maximum number of tokens to include in the result. Default is 2500.
+   */
+  function search_vercel_documentation(topic: string, tokens?: number);
+
+  /**
+   * Deploy the current project to Vercel
+   */
+  function deploy_to_vercel();
+```
+
 Required parameters always show; optional parameters stay hidden unless (a) there are only one or two of them alongside fewer than four required fields or (b) you pass `--all-parameters`. Whenever mcporter hides parameters it prints `Optional parameters hidden; run with --all-parameters to view all fields.` so you know how to reveal the full signature. Return types are inferred from the tool schema’s `title`, falling back to omitting the suffix entirely instead of guessing.
 
 ### Context7: fetch docs (no auth required)
