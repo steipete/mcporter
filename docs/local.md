@@ -7,14 +7,23 @@ You don’t need `npx` every time—here are the three local entry points we use
 All commands can be executed with `tsx` straight from `src/cli.ts`:
 
 ```bash
-# list servers
+# list servers (text)
 pnpm exec tsx src/cli.ts list
 
-# call a tool
+# list servers as JSON
+pnpm exec tsx src/cli.ts list --json
+
+# call a tool (auto formatted)
 pnpm exec tsx src/cli.ts call context7.resolve-library-id libraryName=react
+
+# call a tool but emit structured JSON on success/failure
+pnpm exec tsx src/cli.ts call context7.resolve-library-id libraryName=react --output json
 
 # auth flow
 pnpm exec tsx src/cli.ts auth vercel
+
+# auth flow with structured JSON status
+pnpm exec tsx src/cli.ts auth vercel --json
 
 # ad-hoc auth
 pnpm exec tsx src/cli.ts auth https://mcp.supabase.com/mcp

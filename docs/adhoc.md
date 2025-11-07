@@ -10,6 +10,7 @@ Two new flag sets let you describe a server on the command line:
 - `mcporter call --stdio "bun run ./server.ts" --name local-tools`
 
 You can also pass a bare URL as the selector (`mcporter list https://mcp.linear.app/mcp`) or embed the URL in a `call` expression (`mcporter call 'https://mcp.example.com/tools.generate({ topic: "release" })'`).
+- Add `--json` to `mcporter list …` when you need a machine-readable summary of status counts and per-server failures, use `--output json`/`--output raw` with `mcporter call` to receive structured `{ server, tool, issue }` envelopes whenever a transport error occurs, and run `mcporter auth … --json` to capture the same envelope if OAuth or transport setup fails.
 
 ## Transport Detection
 

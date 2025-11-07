@@ -2,6 +2,7 @@ import { readCliMetadata } from '../cli-metadata.js';
 import { expectValue } from './flag-utils.js';
 import { buildGenerateCliCommand, shellQuote } from './generate-cli-runner.js';
 import { formatSourceSuffix } from './list-format.js';
+import { consumeOutputFormat } from './output-format.js';
 import { formatPathForDisplay } from './path-utils.js';
 
 interface InspectFlags {
@@ -49,17 +50,17 @@ export async function handleInspectCli(args: string[]): Promise<void> {
 }
 
 function parseInspectFlags(args: string[]): InspectFlags {
-  let format: 'text' | 'json' = 'text';
+  let format = consumeOutputFormat(args, {
+    defaultFormat: 'text',
+    allowed: ['text', 'json'],
+    enableRawShortcut: false,
+    jsonShortcutFlag: '--json',
+  }) as InspectFlags['format'];
   let index = 0;
   while (index < args.length) {
     const token = args[index];
     if (!token) {
       index += 1;
-      continue;
-    }
-    if (token === '--json') {
-      format = 'json';
-      args.splice(index, 1);
       continue;
     }
     if (token === '--format') {

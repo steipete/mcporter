@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { __test as emitTsTestInternals, handleEmitTs } from '../src/cli/emit-ts-command.js';
 import { renderClientModule, renderTypesModule } from '../src/cli/emit-ts-templates.js';
 import { buildToolMetadata } from '../src/cli/generate/tools.js';
@@ -91,5 +91,17 @@ describe('handleEmitTs', () => {
     await handleEmitTs(runtime, ['example.com/mcp.getComponents', '--out', typesPath, '--mode', 'types']);
     const typesSource = await fs.readFile(typesPath, 'utf8');
     expect(typesSource).toContain('export interface ExampleComMcpGetComponentsTools');
+  });
+
+  it('emits JSON summaries when --json is provided', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'emit-ts-json-'));
+    const runtime = createRuntimeStub();
+    const typesPath = path.join(tmpDir, 'integration-tools.d.ts');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await handleEmitTs(runtime, ['integration', '--out', typesPath, '--mode', 'types', '--json']);
+    const payload = JSON.parse(logSpy.mock.calls.at(-1)?.[0] ?? '{}');
+    expect(payload.mode).toBe('types');
+    expect(payload.server).toBe('integration');
+    logSpy.mockRestore();
   });
 });

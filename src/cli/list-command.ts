@@ -1,30 +1,38 @@
 import ora from 'ora';
 import type { ServerDefinition } from '../config.js';
-import type { ConnectionIssue } from '../error-classifier.js';
 import type { EphemeralServerSpec } from './adhoc-server.js';
 import { extractEphemeralServerFlags } from './ephemeral-flags.js';
 import { prepareEphemeralServerTarget } from './ephemeral-target.js';
 import type { ToolMetadata } from './generate/tools.js';
 import { splitHttpToolSelector } from './http-utils.js';
 import { chooseClosestIdentifier, renderIdentifierResolutionMessages } from './identifier-helpers.js';
+import type { SerializedConnectionIssue } from './json-output.js';
+import { formatErrorMessage, serializeConnectionIssue } from './json-output.js';
 import { buildToolDoc, formatExampleBlock } from './list-detail-helpers.js';
 import type { ListSummaryResult, StatusCategory } from './list-format.js';
 import { classifyListError, formatSourceSuffix, renderServerListRow } from './list-format.js';
+import { consumeOutputFormat } from './output-format.js';
 import { boldText, dimText, extraDimText, supportsSpinner, yellowText } from './terminal.js';
 import { consumeTimeoutFlag, LIST_TIMEOUT_MS, withTimeout } from './timeouts.js';
 import { loadToolMetadata } from './tool-cache.js';
+import { formatTransportSummary } from './transport-utils.js';
 
 export function extractListFlags(args: string[]): {
   schema: boolean;
   timeoutMs?: number;
   requiredOnly: boolean;
   ephemeral?: EphemeralServerSpec;
-  format: 'text' | 'json';
+  format: ListOutputFormat;
 } {
   let schema = false;
   let timeoutMs: number | undefined;
   let requiredOnly = true;
-  let format: 'text' | 'json' = 'text';
+  const format = consumeOutputFormat(args, {
+    defaultFormat: 'text',
+    allowed: ['text', 'json'],
+    enableRawShortcut: false,
+    jsonShortcutFlag: '--json',
+  }) as ListOutputFormat;
   const ephemeral = extractEphemeralServerFlags(args);
   let index = 0;
   while (index < args.length) {
@@ -47,15 +55,12 @@ export function extractListFlags(args: string[]): {
       timeoutMs = consumeTimeoutFlag(args, index, { flagName: '--timeout' });
       continue;
     }
-    if (token === '--json') {
-      format = 'json';
-      args.splice(index, 1);
-      continue;
-    }
     index += 1;
   }
   return { schema, timeoutMs, requiredOnly, ephemeral, format };
 }
+
+type ListOutputFormat = 'text' | 'json';
 
 export async function handleList(
   runtime: Awaited<ReturnType<typeof import('../runtime.js')['createRuntime']>>,
@@ -393,17 +398,6 @@ function printToolDetail(
   };
 }
 
-function formatTransportSummary(
-  definition: ReturnType<Awaited<ReturnType<typeof import('../runtime.js')['createRuntime']>>['getDefinition']>
-): string {
-  if (definition.command.kind === 'http') {
-    const url = definition.command.url instanceof URL ? definition.command.url.href : String(definition.command.url);
-    return `HTTP ${url}`;
-  }
-  const rendered = [definition.command.command, ...(definition.command.args ?? [])].join(' ').trim();
-  return `STDIO ${rendered}`;
-}
-
 interface ListJsonServerEntry {
   name: string;
   status: StatusCategory;
@@ -417,7 +411,7 @@ interface ListJsonServerEntry {
     inputSchema?: unknown;
     outputSchema?: unknown;
   }>;
-  issue?: ConnectionIssue;
+  issue?: SerializedConnectionIssue;
   authCommand?: string;
   error?: string;
 }
@@ -478,9 +472,9 @@ function buildJsonListEntry(
       result.server as ReturnType<Awaited<ReturnType<typeof import('../runtime.js')['createRuntime']>>['getDefinition']>
     ),
     source: result.server.source,
-    issue: advice.issue,
+    issue: serializeConnectionIssue(advice.issue),
     authCommand: advice.authCommand,
-    error: advice.summary,
+    error: formatErrorMessage(result.error),
   };
 }
 

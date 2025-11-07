@@ -134,6 +134,8 @@ Helpful flags:
 - `--output <format>` or `--raw` -- control formatted output (defaults to pretty-printed auto detection).
 - `--json` (on `mcporter list`) -- emit JSON summaries/counts instead of text. Multi-server runs report per-server statuses, counts, and connection issues; single-server runs include the full tool metadata.
 - `--output json/raw` (on `mcporter call`) -- when a connection fails, MCPorter prints the usual colorized hint and also emits a structured `{ server, tool, issue }` envelope so scripts can handle auth/offline/http errors programmatically.
+- `--json` (on `mcporter auth`) -- emit the same structured connection envelope whenever OAuth/transport setup fails, instead of throwing an error.
+- `--json` (on `mcporter emit-ts`) -- print a JSON summary describing the emitted files (mode + output paths) instead of text logs—handy when generating artifacts inside scripts.
 - `--all-parameters` -- show every schema field when listing a server (default output shows at least five parameters plus a summary of the rest).
 - `--http-url <https://…>` / `--stdio "command …"` -- describe an ad-hoc MCP server inline (pair with `--env KEY=value`, `--cwd`, `--name`, and `--persist <config.json>` as needed). These flags now work with `mcporter auth` too, so `mcporter auth https://mcp.example.com/mcp` just works.
 - For OAuth-protected servers such as `vercel`, run `npx mcporter auth vercel` once to complete login.
@@ -301,6 +303,7 @@ npx mcporter emit-ts linear --mode client --out clients/linear.ts
 - `--mode types` (default) produces a `.d.ts` interface you can import anywhere.
 - `--mode client` emits the `.d.ts` **and** a `.ts` helper that wraps `createRuntime` / `createServerProxy` for you.
 - Add `--include-optional` whenever you want every optional field spelled out (mirrors `mcporter list --all-parameters`).
+- Add `--json` to emit a structured summary (mode plus output paths) instead of plain-text logs when scripting `emit-ts`.
 - The `<server>` argument also understands HTTP URLs and selectors with `.tool` suffixes or missing protocols—mirroring the main CLI.
 
 See [docs/emit-ts.md](docs/emit-ts.md) for the full flag reference plus inline snapshots of the emitted files.

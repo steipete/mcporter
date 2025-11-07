@@ -81,6 +81,7 @@ returned object’s `close()` becomes a no-op.
 | `--mode types|client` | Output kind (defaults to `types`). |
 | `--types-out <path>` | Optional override for the `.d.ts` file when `--mode client`. Default: derive from `--out`. |
 | `--include-optional` | Include every parameter (not just the minimum 5 + required). |
+| `--json` | Emit a JSON summary describing the emitted file(s) instead of plain-text logs. |
 
 ## Testing
 

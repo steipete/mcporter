@@ -8,6 +8,7 @@ import { readPackageMetadata } from './generate/template.js';
 import type { ToolMetadata } from './generate/tools.js';
 import { extractHttpServerTarget } from './http-utils.js';
 import { buildToolDoc } from './list-detail-helpers.js';
+import { consumeOutputFormat } from './output-format.js';
 import { findServerByHttpUrl } from './server-lookup.js';
 import { loadToolMetadata } from './tool-cache.js';
 
@@ -17,6 +18,7 @@ interface EmitTsFlags {
   mode: 'types' | 'client';
   includeOptional: boolean;
   typesOutPath?: string;
+  format: 'text' | 'json';
 }
 
 interface ParsedEmitTsOptions extends Required<Omit<EmitTsFlags, 'server' | 'outPath' | 'typesOutPath'>> {
@@ -44,7 +46,21 @@ export async function handleEmitTs(runtime: Runtime, args: string[]): Promise<vo
   if (options.mode === 'types') {
     const source = renderTypesModule({ interfaceName, docs: docEntries, metadata });
     await writeFile(options.outPath, source);
-    console.log(`Emitted TypeScript definitions for ${options.server} → ${options.outPath}`);
+    if (options.format === 'json') {
+      console.log(
+        JSON.stringify(
+          {
+            mode: 'types',
+            server: options.server,
+            outPath: options.outPath,
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(`Emitted TypeScript definitions for ${options.server} → ${options.outPath}`);
+    }
     return;
   }
 
@@ -59,18 +75,40 @@ export async function handleEmitTs(runtime: Runtime, args: string[]): Promise<vo
   });
   await writeFile(typesOutPath, typesSource);
   await writeFile(options.outPath, clientSource);
-  console.log(`Emitted client + types for ${options.server} → ${options.outPath} / ${typesOutPath}`);
+  if (options.format === 'json') {
+    console.log(
+      JSON.stringify(
+        {
+          mode: 'client',
+          server: options.server,
+          clientOutPath: options.outPath,
+          typesOutPath,
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    console.log(`Emitted client + types for ${options.server} → ${options.outPath} / ${typesOutPath}`);
+  }
 }
 
 function parseEmitTsArgs(args: string[]): ParsedEmitTsOptions {
   const flags: EmitTsFlags = {
     mode: 'types',
     includeOptional: false,
+    format: 'text',
   };
   const common = extractGeneratorFlags(args, { allowIncludeOptional: true });
   if (common.includeOptional) {
     flags.includeOptional = true;
   }
+  flags.format = consumeOutputFormat(args, {
+    defaultFormat: 'text',
+    allowed: ['text', 'json'],
+    enableRawShortcut: false,
+    jsonShortcutFlag: '--json',
+  }) as EmitTsFlags['format'];
   let index = 0;
   while (index < args.length) {
     const token = args[index];
@@ -131,6 +169,7 @@ function parseEmitTsArgs(args: string[]): ParsedEmitTsOptions {
     mode: flags.mode,
     includeOptional: flags.includeOptional,
     typesOutPath: flags.typesOutPath ? path.resolve(flags.typesOutPath) : undefined,
+    format: flags.format,
   };
 }
 

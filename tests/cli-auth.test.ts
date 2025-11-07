@@ -66,4 +66,31 @@ describe('mcporter auth ad-hoc support', () => {
     expect(listTools).toHaveBeenCalledWith('vercel', { autoAuthorize: true });
     expect(registerDefinition).not.toHaveBeenCalled();
   });
+
+  it('emits JSON envelopes when auth fails and --json is provided', async () => {
+    const { handleAuth } = await cliModulePromise;
+    const definition = {
+      name: 'linear',
+      command: { kind: 'http', url: new URL('https://mcp.linear.app/mcp') },
+    } as ServerDefinition;
+    const runtime = {
+      getDefinitions: () => [definition],
+      registerDefinition: vi.fn(),
+      listTools: vi.fn().mockRejectedValue(new Error('fetch failed: connect ECONNREFUSED 127.0.0.1:9000')),
+      getDefinition: () => definition,
+    } as unknown as Awaited<ReturnType<typeof import('../src/runtime.js')['createRuntime']>>;
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(handleAuth(runtime, ['linear', '--json'])).resolves.toBeUndefined();
+
+    expect(process.exitCode).toBe(1);
+    const payload = JSON.parse(logSpy.mock.calls.at(-1)?.[0] ?? '{}');
+    expect(payload.server).toBe('linear');
+    expect(payload.issue.kind).toBe('offline');
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
 });

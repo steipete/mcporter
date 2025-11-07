@@ -12,6 +12,8 @@ import {
   normalizeIdentifier,
   renderIdentifierResolutionMessages,
 } from './identifier-helpers.js';
+import { buildConnectionIssueEnvelope } from './json-output.js';
+import { consumeOutputFormat } from './output-format.js';
 import { type OutputFormat, printCallOutput, tailLogIfRequested } from './output-utils.js';
 import { dumpActiveHandles } from './runtime-debug.js';
 import { dimText, redText, yellowText } from './terminal.js';
@@ -30,15 +32,14 @@ interface CallArgsParseResult {
   ephemeral?: EphemeralServerSpec;
 }
 
-function isOutputFormat(value: string): value is OutputFormat {
-  return value === 'auto' || value === 'text' || value === 'markdown' || value === 'json' || value === 'raw';
-}
-
 export function parseCallArguments(args: string[]): CallArgsParseResult {
   // Maintain backwards compatibility with legacy positional + key=value forms.
   const result: CallArgsParseResult = { args: {}, tailLog: false, output: 'auto' };
   const ephemeral = extractEphemeralServerFlags(args);
   result.ephemeral = ephemeral;
+  result.output = consumeOutputFormat(args, {
+    defaultFormat: 'auto',
+  });
   const positional: string[] = [];
   let index = 0;
   while (index < args.length) {
@@ -95,18 +96,6 @@ export function parseCallArguments(args: string[]): CallArgsParseResult {
       } catch (error) {
         throw new Error(`Unable to parse --args: ${(error as Error).message}`);
       }
-      index += 2;
-      continue;
-    }
-    if (token === '--output') {
-      const value = args[index + 1];
-      if (!value) {
-        throw new Error('--output requires a format (auto|text|markdown|json|raw).');
-      }
-      if (!isOutputFormat(value)) {
-        throw new Error('--output format must be one of: auto, text, markdown, json, raw.');
-      }
-      result.output = value;
       index += 2;
       continue;
     }
@@ -299,7 +288,8 @@ export async function handleCall(
   } catch (error) {
     const issue = maybeReportConnectionIssue(server, tool, error);
     if (parsed.output === 'json' || parsed.output === 'raw') {
-      emitConnectionIssueJson(server, tool, issue, error);
+      const payload = buildConnectionIssueEnvelope({ server, tool, error, issue });
+      console.log(JSON.stringify(payload, null, 2));
       process.exitCode = 1;
       return;
     }
@@ -598,44 +588,4 @@ function summarizeIssueMessage(message: string): string {
     return trimmed;
   }
   return `${trimmed.slice(0, 117)}…`;
-}
-
-function emitConnectionIssueJson(
-  server: string,
-  tool: string,
-  issue: ConnectionIssue | undefined,
-  error: unknown
-): void {
-  const payload = {
-    server,
-    tool,
-    error: formatErrorMessage(error),
-    issue: issue
-      ? {
-          kind: issue.kind,
-          statusCode: issue.statusCode,
-          stdioExitCode: issue.stdioExitCode,
-          stdioSignal: issue.stdioSignal,
-          rawMessage: issue.rawMessage,
-        }
-      : undefined,
-  };
-  console.log(JSON.stringify(payload, null, 2));
-}
-
-function formatErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message ?? 'Unknown error';
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
-  if (error === undefined || error === null) {
-    return 'Unknown error';
-  }
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return 'Unknown error';
-  }
 }
