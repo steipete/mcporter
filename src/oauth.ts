@@ -12,6 +12,7 @@ import type {
   OAuthTokens,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import type { ServerDefinition } from './config.js';
+import { readJsonFile, writeJsonFile } from './fs-json.js';
 
 const CALLBACK_HOST = '127.0.0.1';
 const CALLBACK_PATH = '/callback';
@@ -59,25 +60,6 @@ function openExternal(url: string) {
 // ensureDirectory guarantees a directory exists before writing JSON blobs.
 async function ensureDirectory(dir: string) {
   await fs.mkdir(dir, { recursive: true });
-}
-
-// readJsonFile returns undefined for missing files instead of throwing.
-async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
-  try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(raw) as T;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
-// writeJsonFile persists JSON data to disk, creating parent directories as needed.
-async function writeJsonFile(filePath: string, data: unknown) {
-  await ensureDirectory(path.dirname(filePath));
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // FileOAuthClientProvider persists OAuth session artifacts to disk and captures callback redirects.
