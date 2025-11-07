@@ -321,7 +321,7 @@ class McpRuntime implements Runtime {
         try {
           return await attemptConnect();
         } catch (primaryError) {
-          if (primaryError instanceof UnauthorizedError) {
+          if (isUnauthorizedError(primaryError)) {
             await oauthSession?.close().catch(() => {});
             const promoted = maybeEnableOAuth(activeDefinition, this.logger);
             if (promoted && options.maxOAuthAttempts !== 0) {
@@ -348,7 +348,7 @@ class McpRuntime implements Runtime {
           } catch (sseError) {
             await closeTransportAndWait(this.logger, sseTransport).catch(() => {});
             await oauthSession?.close().catch(() => {});
-            if (sseError instanceof UnauthorizedError && options.maxOAuthAttempts !== 0) {
+            if (isUnauthorizedError(sseError) && options.maxOAuthAttempts !== 0) {
               const promoted = maybeEnableOAuth(activeDefinition, this.logger);
               if (promoted) {
                 activeDefinition = promoted;
@@ -380,7 +380,7 @@ class McpRuntime implements Runtime {
         await client.connect(transport);
         return;
       } catch (error) {
-        if (!(error instanceof UnauthorizedError) || !session) {
+        if (!isUnauthorizedError(error) || !session) {
           throw error;
         }
         attempt += 1;
@@ -430,7 +430,20 @@ function maybeEnableOAuth(definition: ServerDefinition, logger: RuntimeLogger): 
 
 export const __test = {
   maybeEnableOAuth,
+  isUnauthorizedError,
 };
+
+function isUnauthorizedError(error: unknown): boolean {
+  if (error instanceof UnauthorizedError) {
+    return true;
+  }
+  const message =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : error ? JSON.stringify(error) : '';
+  if (!message) {
+    return false;
+  }
+  return /\b(401|403)\b/i.test(message) || /unauthorized|invalid[_-]?token|forbidden/i.test(message);
+}
 
 // closeTransportAndWait closes the transport and ensures its backing process exits.
 async function closeTransportAndWait(

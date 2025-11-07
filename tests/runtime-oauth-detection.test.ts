@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
 
 import { type ServerDefinition } from '../src/config.js';
 import { __test } from '../src/runtime.js';
@@ -32,5 +33,20 @@ describe('maybeEnableOAuth', () => {
     };
     const updated = __test.maybeEnableOAuth(def, logger as never);
     expect(updated).toBeUndefined();
+  });
+});
+
+describe('isUnauthorizedError helper', () => {
+  it('matches UnauthorizedError instances', () => {
+    const err = new UnauthorizedError('Unauthorized');
+    expect(__test.isUnauthorizedError(err)).toBe(true);
+  });
+
+  it('matches generic errors with 401 codes', () => {
+    expect(__test.isUnauthorizedError(new Error('SSE error: Non-200 status code (401)'))).toBe(true);
+  });
+
+  it('ignores unrelated errors', () => {
+    expect(__test.isUnauthorizedError(new Error('network timeout'))).toBe(false);
   });
 });
