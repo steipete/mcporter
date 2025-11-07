@@ -35,8 +35,8 @@ describe('parseCallArguments', () => {
   });
 
   it('throws when flags conflict with call expression content', () => {
-    expect(() =>
-      parseCallArguments(['--server', 'linear', 'cursor.list_documents(limit:1)'])
-    ).toThrow(/Conflicting server names/);
+    expect(() => parseCallArguments(['--server', 'linear', 'cursor.list_documents(limit:1)'])).toThrow(
+      /Conflicting server names/
+    );
   });
 });
