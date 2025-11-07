@@ -6,6 +6,7 @@
 - Added configurable log levels (`--log-level` / `MCPORTER_LOG_LEVEL`) that default to `warn`, promoting noisy transport fallbacks to warnings so critical issues still surface.
 - Forced the CLI to exit cleanly after shutdown (opt out with `MCPORTER_NO_FORCE_EXIT`) and patched `StdioClientTransport` so stdio MCP servers no longer leave Node handles hanging; stderr from stdio servers is buffered and replayed via `MCPORTER_STDIO_LOGS=1` or whenever a server exits with a non-zero status.
 - Documented the tmux workflow (`tmux new-session -- pnpm mcporter:list`) so long-running list/debug sessions remain observable when diagnosing hung transports.
+- Known issue: `mcporter --help` / `mcporter --version` currently route through the command inference heuristic and treat `--help` as a server name. The fix (explicit global `--help/--version` handling) is tracked for the next release.
 
 ### Discovery, calling, and ad-hoc workflows
 - Rebuilt `mcporter list`: spinner updates stream live, summaries print only after discovery completes, and single-server views now render TypeScript-style doc blocks, inline examples, inferred return hints, and compact `// optional (N): …` summaries. The CLI guarantees at least five parameters before truncating, introduced a single `--all-parameters` switch (replacing the `--required-only` / `--include-optional` pair), and shares its formatter with `mcporter generate-cli` so signatures are consistent everywhere.
