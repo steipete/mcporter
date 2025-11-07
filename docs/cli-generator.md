@@ -22,7 +22,7 @@ Create an `mcporter generate-cli` command that produces a standalone CLI for a s
    - If `--server` matches a configured name (via `loadServerDefinitions`), use that server definition.
    - Otherwise, if the value looks like a file path, load a Cursor-style JSON definition from disk.
    - Otherwise, attempt to parse inline JSON/JSON5.
-   - When `--command` is a raw HTTP selector or shell command, normalize scheme-less URLs to HTTPS and split stdio commands into `command` + `args` (e.g., `npx -y chrome-devtools-mcp@latest`).
+   - When `--command` (or the first positional argument) looks like a shell command (contains whitespace), split it into `command` + `args` and treat it as stdio. Otherwise, normalize HTTP selectors (`https://`, `http://`, or `host/path.tool`) so `generate-cli mcp.context7.com/mcp` autoconfigures an HTTP transport.
    - Validate that a definition is found; prompt on failure.
 3. **Tool Introspection**
    - Use `listTools(server, { includeSchema: true })` to inspect MCP tool schemas.

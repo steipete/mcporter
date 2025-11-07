@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-_Nothing yet._
+### Code generation & metadata
+- Fixed a regression where `mcporter generate-cli --bundle/--compile` failed in directories without `commander`/`mcporter` installed by aliasing those dependencies to mcporter’s own install and verifying through a new end-to-end test that `node dist/cli.js generate-cli` runs cleanly from an empty project (fixes #1).
 
 ## [0.3.1] - 2025-11-07
 

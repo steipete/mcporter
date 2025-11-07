@@ -29,6 +29,14 @@ async function ensureDistBuilt(): Promise<void> {
   }
 }
 
+async function hasBun(): Promise<boolean> {
+  return await new Promise<boolean>((resolve) => {
+    execFile('bun', ['--version'], { cwd: process.cwd(), env: process.env }, (error) => {
+      resolve(!error);
+    });
+  });
+}
+
 describe('mcporter CLI integration', () => {
   let baseUrl: URL;
   let shutdown: (() => Promise<void>) | undefined;
@@ -115,6 +123,54 @@ describe('mcporter CLI integration', () => {
 
     const stats = await fs.stat(bundlePath);
     expect(stats.isFile()).toBe(true);
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it('runs "node dist/cli.js generate-cli --compile" when bun is available', async () => {
+    if (!(await hasBun())) {
+      console.warn('bun not available on this runner; skipping compile integration test.');
+      return;
+    }
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mcporter-cli-compile-'));
+    await fs.writeFile(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify({ name: 'mcporter-compile-e2e', version: '0.0.0' }, null, 2),
+      'utf8'
+    );
+    const binaryPath = path.join(tempDir, 'context7-cli');
+
+    await new Promise<void>((resolve, reject) => {
+      execFile(
+        process.execPath,
+        [CLI_ENTRY, 'generate-cli', '--command', baseUrl.toString(), '--compile', binaryPath, '--runtime', 'bun'],
+        {
+          cwd: tempDir,
+          env: { ...process.env, MCPORTER_NO_FORCE_EXIT: '1' },
+        },
+        (error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+
+    const stats = await fs.stat(binaryPath);
+    expect(stats.isFile()).toBe(true);
+
+    const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      execFile(binaryPath, ['list-tools'], { env: process.env }, (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve({ stdout, stderr });
+      });
+    });
+    expect(stdout).toContain('ping - Simple health check');
+
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
   });
 });
