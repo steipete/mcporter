@@ -19,7 +19,7 @@ export function pathsForImport(kind: ImportKind, rootDir: string): string[] {
     case 'claude-desktop':
       return [defaultClaudeDesktopConfigPath()];
     case 'codex':
-      return [path.resolve(rootDir, '.codex', 'mcp.toml'), path.join(os.homedir(), '.codex', 'mcp.toml')];
+      return [path.resolve(rootDir, '.codex', 'config.toml'), path.join(os.homedir(), '.codex', 'config.toml')];
     case 'windsurf':
       return [defaultWindsurfConfigPath()];
     case 'vscode':

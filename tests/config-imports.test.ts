@@ -66,7 +66,15 @@ describe('config imports', () => {
     const homeDir = ensureFakeHomeDir();
 
     const names = servers.map((server) => server.name).sort();
-    expect(names).toEqual(['claude-only', 'cursor-only', 'local-only', 'shared', 'vscode-only', 'windsurf-only']);
+    expect(names).toEqual([
+      'claude-only',
+      'codex-only',
+      'cursor-only',
+      'local-only',
+      'shared',
+      'vscode-only',
+      'windsurf-only',
+    ]);
 
     const shared = servers.find((server) => server.name === 'shared');
     expect(shared?.command.kind).toBe('http');
@@ -88,6 +96,17 @@ describe('config imports', () => {
       path: configPath,
     });
 
+    const codexOnly = servers.find((server) => server.name === 'codex-only');
+    expect(codexOnly?.command.kind).toBe('stdio');
+    expect(codexOnly?.command.kind === 'stdio' ? codexOnly.command.command : undefined).toBe('codex-cli');
+    expect(codexOnly?.command.kind === 'stdio' ? codexOnly.command.args : undefined).toEqual(['--run']);
+    const codexSourcePaths = [
+      path.join(homeDir, '.codex', 'config.toml'),
+      path.join(FIXTURE_ROOT, '.codex', 'config.toml'),
+    ];
+    expect(codexOnly?.source?.kind).toBe('import');
+    expect(codexSourcePaths).toContain(codexOnly?.source?.path);
+
     const windsurfOnly = servers.find((server) => server.name === 'windsurf-only');
     expect(windsurfOnly?.command.kind).toBe('stdio');
     expect(windsurfOnly?.command.kind === 'stdio' ? windsurfOnly.command.command : undefined).toBe('windsurf-cli');
@@ -106,5 +125,28 @@ describe('config imports', () => {
     ];
     expect(vscodeOnly?.source?.kind).toBe('import');
     expect(expectedVscodePaths).toContain(vscodeOnly?.source?.path);
+  });
+
+  it('loads Codex servers from the user config when the project lacks a .codex directory', async () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mcporter-imports-'));
+    try {
+      const tempConfigDir = path.join(tempRoot, 'config');
+      fs.mkdirSync(tempConfigDir, { recursive: true });
+      fs.copyFileSync(path.join(FIXTURE_ROOT, 'config', 'mcporter.json'), path.join(tempConfigDir, 'mcporter.json'));
+
+      const servers = await loadServerDefinitions({
+        configPath: path.join(tempConfigDir, 'mcporter.json'),
+        rootDir: tempRoot,
+      });
+      const homeDir = ensureFakeHomeDir();
+      const codexOnly = servers.find((server) => server.name === 'codex-only');
+      expect(codexOnly).toBeDefined();
+      expect(codexOnly?.source).toEqual({
+        kind: 'import',
+        path: path.join(homeDir, '.codex', 'config.toml'),
+      });
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   });
 });

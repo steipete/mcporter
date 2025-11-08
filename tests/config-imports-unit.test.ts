@@ -69,6 +69,16 @@ describe('config import helpers', () => {
     expect(testEntry?.headers?.Authorization).toBe('Bearer abc');
   });
 
+  it('prefers config.toml when resolving Codex imports', () => {
+    homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue('/fake/home');
+    const rootDir = '/repo/project';
+    const imports = pathsForImport('codex', rootDir);
+    expect(imports).toEqual([
+      path.resolve(rootDir, '.codex', 'config.toml'),
+      path.join('/fake/home', '.codex', 'config.toml'),
+    ]);
+  });
+
   it('generates cursor import paths relative to project root and user config dir', () => {
     previousAppData = process.env.APPDATA;
     previousXdg = process.env.XDG_CONFIG_HOME;
