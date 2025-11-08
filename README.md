@@ -318,6 +318,17 @@ See [docs/emit-ts.md](docs/emit-ts.md) for the full flag reference plus inline s
 
 ## Configuration Reference
 
+Manage this file with `mcporter config list|get|add|remove|import` when you’d rather avoid hand-editing JSON; see [docs/config.md](docs/config.md) for the full walkthrough.
+
+### Manage configs with `mcporter config`
+
+Run `mcporter config …` via your package manager (pnpm, npm, npx, etc.) when you want an interactive view of project MCPs:
+
+- `config list` shows **only local entries** by default and, on TTYs, prints a summary of every other config file (Cursor, Claude, Windsurf, VS Code, etc.) with counts and sample names. Add `--source import` to inspect those imported entries directly or `--json` for scripting.
+- `config get/remove/logout` reuse the fuzzy matching logic from `mcporter list`/`call`, so typos like `sshadcn` auto-correct to `shadcn` (with a dimmed notice) and ambiguous names surface “Did you mean …?” hints.
+- `config import <kind> --copy` pulls editor-managed entries into `config/mcporter.json`, letting you customize or remove them locally without touching upstream files.
+- Every subcommand honors `--config <path>` / `--root <dir>`, making it easy to juggle multiple project configs or workspace-specific overrides.
+
 `config/mcporter.json` mirrors Cursor/Claude's shape:
 
 ```jsonc
