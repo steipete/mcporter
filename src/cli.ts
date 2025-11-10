@@ -99,7 +99,7 @@ export async function runCli(argv: string[]): Promise<void> {
   const configResolution = resolveConfigPath(globalFlags['--config'], rootOverride ?? process.cwd());
 
   const runtimeOptions = {
-    configPath: configResolution.path,
+    configPath: configResolution.explicit ? configResolution.path : undefined,
     rootDir: rootOverride,
     logger: getActiveLogger(),
     oauthTimeoutMs: oauthTimeoutOverride,

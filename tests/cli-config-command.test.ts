@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleConfigCli } from '../src/cli/config-command.js';
 import type { LoadConfigOptions } from '../src/config.js';
+import { MCPORTER_VERSION } from '../src/runtime.js';
 
 describe('mcporter config CLI', () => {
   let tempDir: string;
@@ -37,9 +38,20 @@ describe('mcporter config CLI', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(captureLog(logs));
     await handleConfigCli(buildOptions({ configPath }), ['list', '--json']);
     spy.mockRestore();
-    const payload = JSON.parse(logs.join('\n')) as { servers: Array<{ name: string }> };
+    const jsonLine = logs.find((entry) => entry.trimStart().startsWith('{')) ?? '{}';
+    const payload = JSON.parse(jsonLine.trim()) as { servers: Array<{ name: string }> };
     expect(payload.servers).toHaveLength(1);
     expect(payload.servers[0]?.name).toBe('linear');
+  });
+
+  it('prints config summary for text list output', async () => {
+    await handleConfigCli(buildOptions({ configPath }), ['add', 'linear', 'https://linear.app/mcp']);
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation(captureLog(logs));
+    await handleConfigCli(buildOptions({ configPath }), ['list']);
+    spy.mockRestore();
+    expect(logs.some((entry) => entry.includes('Project config:'))).toBe(true);
+    expect(logs.some((entry) => entry.includes('System config:'))).toBe(true);
   });
 
   it('removes an existing server', async () => {
@@ -164,6 +176,7 @@ describe('mcporter config CLI', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(captureLog(logs));
     await handleConfigCli(buildOptions({ configPath }), ['doctor']);
     spy.mockRestore();
+    expect(logs[0]).toBe(`MCPorter ${MCPORTER_VERSION}`);
     expect(logs.join('\n')).toContain('Config looks good.');
   });
 
@@ -215,7 +228,8 @@ describe('mcporter config CLI', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(captureLog(logs));
     await handleConfigCli(buildOptions({ configPath, rootDir: tempDir }), ['list', '--json', '--source', 'import']);
     spy.mockRestore();
-    const payload = JSON.parse(logs.join('\n')) as { servers: Array<{ name: string }> };
+    const jsonLine = logs.find((entry) => entry.trimStart().startsWith('{')) ?? '{}';
+    const payload = JSON.parse(jsonLine.trim()) as { servers: Array<{ name: string }> };
     expect(payload.servers.some((server) => server.name === 'cursor-only')).toBe(true);
   });
 
@@ -225,7 +239,8 @@ describe('mcporter config CLI', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(captureLog(logs));
     await handleConfigCli(buildOptions({ configPath }), ['list', '--json', '--source', 'local']);
     spy.mockRestore();
-    const payload = JSON.parse(logs.join('\n')) as { servers: Array<{ name: string }> };
+    const jsonLine = logs.find((entry) => entry.trimStart().startsWith('{')) ?? '{}';
+    const payload = JSON.parse(jsonLine.trim()) as { servers: Array<{ name: string }> };
     expect(payload.servers).toHaveLength(1);
     expect(payload.servers[0]?.name).toBe('linear');
   });

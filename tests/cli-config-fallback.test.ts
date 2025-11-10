@@ -33,9 +33,14 @@ describe('mcporter CLI config fallback', () => {
 
   it('lists servers even when the config directory is missing', async () => {
     const { runCli } = await cliModulePromise;
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value?: unknown) => {
+      if (typeof value === 'string') {
+        logs.push(value);
+      }
+    });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await expect(runCli(['list'])).resolves.not.toThrow();
+    await expect(runCli(['config', 'list'])).resolves.not.toThrow();
     expect(warnSpy).not.toHaveBeenCalled();
     logSpy.mockRestore();
     warnSpy.mockRestore();
@@ -46,9 +51,14 @@ describe('mcporter CLI config fallback', () => {
     await fs.mkdir(path.join(tempDir, 'config'), { recursive: true });
     const configPath = path.join(tempDir, 'config', 'mcporter.json');
     await fs.writeFile(configPath, '{ invalid : json', 'utf8');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value?: unknown) => {
+      if (typeof value === 'string') {
+        logs.push(value);
+      }
+    });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await expect(runCli(['list'])).resolves.not.toThrow();
+    await expect(runCli(['config', 'list'])).resolves.not.toThrow();
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const message = warnSpy.mock.calls[0]?.[0]?.toString() ?? '';
     expect(message).toContain('Ignoring config');
@@ -59,11 +69,15 @@ describe('mcporter CLI config fallback', () => {
 
   it('prints the doctor banner even when config is missing', async () => {
     const { runCli } = await cliModulePromise;
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value?: unknown) => {
+      if (typeof value === 'string') {
+        logs.push(value);
+      }
+    });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await expect(runCli(['config', 'doctor'])).resolves.not.toThrow();
-    expect(logSpy).toHaveBeenCalled();
-    expect(logSpy.mock.calls[0]?.[0]).toBe(`MCPorter ${MCPORTER_VERSION}`);
+    expect(logs[0]).toBe(`MCPorter ${MCPORTER_VERSION}`);
     expect(warnSpy).not.toHaveBeenCalled();
     logSpy.mockRestore();
     warnSpy.mockRestore();
@@ -74,10 +88,15 @@ describe('mcporter CLI config fallback', () => {
     await fs.mkdir(path.join(tempDir, 'config'), { recursive: true });
     const configPath = path.join(tempDir, 'config', 'mcporter.json');
     await fs.writeFile(configPath, '{ not valid }', 'utf8');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logs: string[] = [];
+    const logSpy = vi.spyOn(console, 'log').mockImplementation((value?: unknown) => {
+      if (typeof value === 'string') {
+        logs.push(value);
+      }
+    });
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await expect(runCli(['config', 'doctor'])).resolves.not.toThrow();
-    expect(logSpy.mock.calls[0]?.[0]).toBe(`MCPorter ${MCPORTER_VERSION}`);
+    expect(logs[0]).toBe(`MCPorter ${MCPORTER_VERSION}`);
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0]?.[0]).toContain(configPath);
     logSpy.mockRestore();

@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import type { RawEntry } from '../config.js';
 import {
@@ -171,6 +172,9 @@ async function handleListCommand(options: ConfigCliOptions, args: string[]): Pro
   }
   if ((!flags.source || flags.source === 'local') && flags.format === 'text') {
     printImportSummary(servers.filter((server) => server.source?.kind === 'import'));
+  }
+  if (flags.format === 'text') {
+    await printConfigFooter(options.loadOptions);
   }
 }
 
@@ -691,6 +695,7 @@ async function handleDoctorCommand(options: ConfigCliOptions, _args: string[]): 
   for (const issue of issues) {
     console.log(`  - ${issue}`);
   }
+  await printConfigFooter(options.loadOptions);
 }
 
 function looksLikeHttp(value: string): boolean {
@@ -702,6 +707,46 @@ function cloneConfig(config: RawConfig): RawConfig {
     mcpServers: config.mcpServers ? { ...config.mcpServers } : {},
     imports: config.imports ? [...config.imports] : [],
   };
+}
+
+async function printConfigFooter(loadOptions: LoadConfigOptions): Promise<void> {
+  const rootDir = loadOptions.rootDir ?? process.cwd();
+  const projectPath = path.resolve(rootDir, 'config', 'mcporter.json');
+  const systemCandidates = buildSystemConfigCandidates();
+  const systemResolved = await resolveFirstExisting(systemCandidates);
+  const projectExists = await pathExists(projectPath);
+
+  console.log('');
+  console.log(`Project config: ${formatPath(projectPath, projectExists)}`);
+  console.log(`System config: ${formatPath(systemResolved.path, systemResolved.exists)}`);
+}
+
+function buildSystemConfigCandidates(): string[] {
+  const homeDir = os.homedir();
+  const base = path.join(homeDir, '.mcporter');
+  return [path.join(base, 'mcporter.json'), path.join(base, 'mcporter.jsonc')];
+}
+
+async function resolveFirstExisting(pathsToCheck: string[]): Promise<{ path: string; exists: boolean }> {
+  for (const candidate of pathsToCheck) {
+    if (await pathExists(candidate)) {
+      return { path: candidate, exists: true };
+    }
+  }
+  return { path: pathsToCheck[0] ?? '', exists: false };
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function formatPath(targetPath: string, exists: boolean): string {
+  return exists ? targetPath : `${targetPath} (missing)`;
 }
 
 async function loadOrCreateConfig(loadOptions: LoadConfigOptions): Promise<{ config: RawConfig; path: string }> {
