@@ -58,6 +58,25 @@ describe('loadServerDefinitions when config is optional', () => {
     }
   });
 
+  it('returns an empty list and logs when the config file is invalid JSON', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mcporter-config-invalid-'));
+    const configDir = path.join(tempDir, 'config');
+    await fs.mkdir(configDir, { recursive: true });
+    const configPath = path.join(configDir, 'mcporter.json');
+    await fs.writeFile(configPath, '{ this is not valid JSON', 'utf8');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const servers = await loadServerDefinitions({ rootDir: tempDir });
+      expect(servers).toEqual([]);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('Ignoring config');
+      expect(warnSpy.mock.calls[0]?.[0]).toContain(configPath);
+    } finally {
+      warnSpy.mockRestore();
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
   it('still throws when an explicit config path is missing', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mcporter-config-explicit-'));
     const explicitPath = path.join(tempDir, 'does-not-exist.json');

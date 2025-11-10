@@ -121,6 +121,8 @@ export function resolveConfigPath(
   return { path: projectPath, explicit: false };
 }
 
+const warnedConfigPaths = new Set<string>();
+
 async function readConfigFile(configPath: string, explicit: boolean): Promise<RawConfig> {
   if (!explicit && !(await pathExistsAsync(configPath))) {
     return { mcpServers: {} };
@@ -129,7 +131,8 @@ async function readConfigFile(configPath: string, explicit: boolean): Promise<Ra
     const buffer = await fs.readFile(configPath, 'utf8');
     return RawConfigSchema.parse(JSON.parse(buffer));
   } catch (error) {
-    if (!explicit && (isErrno(error, 'ENOENT') || includesErrnoMessage(error, 'ENOENT'))) {
+    if (!explicit && isConfigRecoverable(error)) {
+      warnConfigFallback(configPath, error);
       return { mcpServers: {} };
     }
     throw error;
@@ -140,12 +143,11 @@ function isErrno(error: unknown, code: string): error is NodeJS.ErrnoException {
   return Boolean(error && typeof error === 'object' && (error as NodeJS.ErrnoException).code === code);
 }
 
-function includesErrnoMessage(error: unknown, code: string): boolean {
-  if (!error || typeof error !== 'object') {
-    return false;
+function isConfigRecoverable(error: unknown): boolean {
+  if (isErrno(error, 'ENOENT') || includesErrnoMessage(error, 'ENOENT')) {
+    return true;
   }
-  const message = (error as { message?: unknown }).message;
-  return typeof message === 'string' && message.includes(code);
+  return error instanceof SyntaxError;
 }
 
 function pathExists(filePath: string): boolean {
@@ -164,6 +166,23 @@ async function pathExistsAsync(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function warnConfigFallback(configPath: string, error: unknown): void {
+  if (warnedConfigPaths.has(configPath)) {
+    return;
+  }
+  warnedConfigPaths.add(configPath);
+  const reason = error instanceof Error ? error.message : String(error);
+  console.warn(`[mcporter] Ignoring config at ${configPath}: ${reason}`);
+}
+
+function includesErrnoMessage(error: unknown, code: string): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && message.includes(code);
 }
 
 function homeConfigCandidates(): string[] {
