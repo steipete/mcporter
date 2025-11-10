@@ -26,7 +26,27 @@
 15. Create a GitHub release, upload mcporter-macos-arm64-v<version>.tar.gz (with the SHA from step 8), and record the release URL. Double-check the uploaded checksum matches step 8.
 16. Tag the release (git tag v<version> && git push --tags).
 
-After the release is live, always update the Homebrew tap and re-verify both installers. That means bumping `steipete/homebrew-tap` to the new version, confirming `brew install steipete/tap/mcporter` works end-to-end, and then running a fresh `npx mcporter@<version>` smoke test from a brand-new temporary directory to make sure the npm package is usable in a clean environment.
+After the release is live, always update the Homebrew tap and re-verify both installers. That flow should be:
+
+1. Uninstall any existing `mcporter` binaries to avoid PATH conflicts:
+   ```bash
+   brew uninstall mcporter || true
+   npm uninstall -g mcporter || true
+   ```
+2. Install from Homebrew, run `brew test` equivalents (`mcporter list --help`), then uninstall so the npm install owns the global `mcporter` binary:
+   ```bash
+   brew install steipete/tap/mcporter
+   # If you still have /opt/homebrew/bin/mcporter from npm, fix conflicts with:
+   # brew link --overwrite mcporter
+   mcporter list --help | head -n 5
+   brew uninstall mcporter
+   ```
+3. Install the npm package globally (or leave it to npx) and keep that version in place for day-to-day use:
+   ```bash
+   npm install -g mcporter@<version>
+   mcporter --version
+   ```
+4. Finally, run a fresh `npx mcporter@<version>` smoke test from an empty temp directory to ensure the package is usable without global installs.
 
 17. Update `steipete/homebrew-tap` → `Formula/mcporter.rb` with the new version, tarball URL, and SHA256. Refresh the tap README highlights and changelog snippets so Homebrew users see the new version callouts.
 18. Commit and push the tap update.
