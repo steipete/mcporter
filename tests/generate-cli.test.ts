@@ -238,7 +238,7 @@ describeGenerateCli('generateCli', () => {
     expect(Object.keys(cacheData.tools)).toEqual(expect.arrayContaining(['add', 'list_comments']));
 
     const derivedUrl = new URL(baseUrl.toString());
-    derivedUrl.hostname = 'integration.localhost';
+    derivedUrl.hostname = 'localhost';
     const altOutput = path.join(tmpDir, 'integration-alt.ts');
     await new Promise<void>((resolve, reject) => {
       exec.execFile(
