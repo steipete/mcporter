@@ -3,12 +3,17 @@
 ## [Unreleased]
 
 ### CLI & runtime
-- Propagate the CLI’s per-call timeout (defaults to 60s or `--timeout`) into the keep-alive daemon layer, so chrome-devtools and other persistent STDIO servers respect the same deadline as ephemeral transports and no longer outlive aborted calls.
-- `Runtime.callTool` now forwards `timeoutMs` through the daemon bridge, ensuring TanStack MCP clients and mcporter CLI invocations share a single source of truth for long-running tool cancellation.
-- Ad-hoc STDIO servers launched via `mcporter call "npx …"` (or `--stdio`) now inherit the same keep-alive heuristics as config-defined entries, so commands like `chrome-devtools-mcp` are proxied through the daemon instead of spawning a fresh browser for every call once you’ve already got one running.
+- _Nothing yet._
+
+## [0.5.4] - 2025-11-10
+
+### CLI & runtime
+- Propagate the CLI’s per-call timeout (defaults to 60s or `--timeout`) through the keep-alive daemon, so chrome-devtools and other persistent STDIO servers stop as soon as the caller times out.
+- `Runtime.callTool` now honors `timeoutMs` directly, ensuring TanStack MCP clients and the CLI share a single source of truth for cancellation even outside the daemon.
+- Ad-hoc STDIO servers launched via `mcporter call "npx …"` (or `--stdio`) inherit the same keep-alive heuristics and canonical names as config-defined entries, so `MCPORTER_DISABLE_KEEPALIVE=chrome-devtools` and similar overrides work without passing `--name`.
 
 ### Tests
-- Added `tests/daemon-client-timeout.test.ts` plus updated keep-alive + CLI call suites to cover timeout propagation, preventing regressions in future daemon or CLI refactors.
+- Added regression coverage (`tests/daemon-client-timeout.test.ts`, `tests/runtime-call-timeout.test.ts`, and updated keep-alive suites) to guard timeout propagation and canonical keep-alive detection.
 
 ## [0.5.3] - 2025-11-10
 
