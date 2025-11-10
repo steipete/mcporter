@@ -23,6 +23,7 @@ import { dimText, extraDimText, supportsSpinner, yellowText } from './terminal.j
 import { consumeTimeoutFlag, LIST_TIMEOUT_MS, withTimeout } from './timeouts.js';
 import { loadToolMetadata } from './tool-cache.js';
 import { formatTransportSummary } from './transport-utils.js';
+import { MCPORTER_VERSION } from '../runtime.js';
 
 export function extractListFlags(args: string[]): {
   schema: boolean;
@@ -110,7 +111,9 @@ export async function handleList(
     }
 
     if (flags.format === 'text') {
-      console.log(`Listing ${servers.length} server(s) (per-server timeout: ${perServerTimeoutSeconds}s)`);
+      console.log(
+        `mcporter ${MCPORTER_VERSION} — Listing ${servers.length} server(s) (per-server timeout: ${perServerTimeoutSeconds}s)`
+      );
     }
     const spinner =
       flags.format === 'text' && supportsSpinner ? ora(`Discovering ${servers.length} server(s)…`).start() : undefined;

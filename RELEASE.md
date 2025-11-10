@@ -13,7 +13,7 @@
 9. npm pack --dry-run to inspect the npm tarball.
 10. Verify git status is clean.
 11. git commit && git push.
-12. pnpm publish --tag latest
+12. pnpm publish --tag latest *(allow plenty of time—prepublish re-runs check/test/build and can take several minutes. When using the runner, bump `timeout_ms` or run the command directly in a normal shell so it doesn't abort mid-run.)*
 13. `npm view mcporter version` (and `npm view mcporter time`) to ensure the registry reflects the new release before proceeding.
 14. Sanity-check the “one weird trick” workflow from a **completely empty** directory (no package.json/node_modules) via:
     ```bash

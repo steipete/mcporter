@@ -2,9 +2,15 @@
 
 ## [Unreleased]
 
+_No changes yet._
+
+## [0.4.4] - 2025-11-10
+
+### CLI & runtime
+- Fixed the npm `bin` entry so it points to `dist/cli.js` without a leading `./`, keeping the executable in the published tarball and restoring `npx mcporter` functionality. Also bumped the embedded runtime version to 0.4.4 so the CLI reports the correct release.
+
 ### Docs
-- Consolidated the external MCP import matrix into `docs/import.md`, removing the short-lived `docs/mcp-import.md` duplication.
-- Clarified the release checklist to stop immediately on failing tests or lint warnings, and synced the runtime version constant with `package.json`.
+- Consolidated the external MCP import matrix into `docs/import.md`, removing the short-lived `docs/mcp-import.md` duplication, and clarified the release checklist to stop immediately on failing tests or lint warnings.
 
 ## [0.4.3] - 2025-11-10
 
