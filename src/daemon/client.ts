@@ -19,6 +19,8 @@ export interface DaemonClientOptions {
   readonly rootDir?: string;
 }
 
+const DEFAULT_DAEMON_TIMEOUT_MS = 30_000;
+
 export interface DaemonPaths {
   readonly key: string;
   readonly socketPath: string;
@@ -46,7 +48,7 @@ export class DaemonClient {
   }
 
   async callTool(params: CallToolParams): Promise<unknown> {
-    return this.invoke('callTool', params);
+    return this.invoke('callTool', params, params.timeoutMs);
   }
 
   async listTools(params: ListToolsParams): Promise<unknown> {
@@ -83,14 +85,14 @@ export class DaemonClient {
     }
   }
 
-  private async invoke<T = unknown>(method: DaemonRequestMethod, params: unknown): Promise<T> {
+  private async invoke<T = unknown>(method: DaemonRequestMethod, params: unknown, timeoutMs?: number): Promise<T> {
     await this.ensureDaemon();
     try {
-      return (await this.sendRequest<T>(method, params)) as T;
+      return (await this.sendRequest<T>(method, params, timeoutMs)) as T;
     } catch (error) {
       if (isTransportError(error)) {
         await this.restartDaemon();
-        return (await this.sendRequest<T>(method, params)) as T;
+        return (await this.sendRequest<T>(method, params, timeoutMs)) as T;
       }
       throw error;
     }
@@ -153,13 +155,14 @@ export class DaemonClient {
     }
   }
 
-  private async sendRequest<T>(method: DaemonRequestMethod, params: unknown): Promise<T> {
+  private async sendRequest<T>(method: DaemonRequestMethod, params: unknown, timeoutOverrideMs?: number): Promise<T> {
     const request: DaemonRequest = {
       id: randomUUID(),
       method,
       params,
     };
     const payload = JSON.stringify(request);
+    const timeoutMs = resolveDaemonTimeout(timeoutOverrideMs);
     const response = await new Promise<string>((resolve, reject) => {
       const socket = net.createConnection(this.socketPath);
       let settled = false;
@@ -177,7 +180,7 @@ export class DaemonClient {
         settled = true;
         resolve(value);
       };
-      socket.setTimeout(30_000, () => {
+      socket.setTimeout(timeoutMs, () => {
         socket.destroy(Object.assign(new Error('Daemon request timed out.'), { code: 'ETIMEDOUT' }));
       });
       let buffer = '';
@@ -231,6 +234,21 @@ function isTransportError(error: unknown): boolean {
   }
   const code = (error as NodeJS.ErrnoException).code;
   return code === 'ECONNREFUSED' || code === 'ENOENT' || code === 'ETIMEDOUT' || code === 'ECONNRESET';
+}
+
+function resolveDaemonTimeout(override?: number): number {
+  if (typeof override === 'number' && Number.isFinite(override) && override > 0) {
+    return override;
+  }
+  const raw = process.env.MCPORTER_DAEMON_TIMEOUT_MS;
+  if (!raw) {
+    return DEFAULT_DAEMON_TIMEOUT_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_DAEMON_TIMEOUT_MS;
+  }
+  return parsed;
 }
 
 function delay(ms: number): Promise<void> {

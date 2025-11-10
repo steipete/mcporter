@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { CommandSpec, ServerDefinition } from '../config.js';
 import { __configInternals } from '../config.js';
 import { expandHome } from '../env.js';
+import { canonicalKeepAliveName, resolveLifecycle } from '../lifecycle.js';
 
 export interface EphemeralServerSpec {
   name?: string;
@@ -40,23 +41,27 @@ export function resolveEphemeralServer(spec: EphemeralServerSpec): EphemeralServ
     if (url.protocol === 'http:' && !spec.allowInsecureHttp) {
       throw new Error('HTTP endpoints require --allow-http to confirm insecure usage.');
     }
-    const name = slugify(spec.name ?? inferNameFromUrl(url));
     const command: CommandSpec = {
       kind: 'http',
       url,
       headers: __configInternals.ensureHttpAcceptHeader(undefined),
     };
+    const canonical = spec.name ? undefined : canonicalKeepAliveName(command);
+    const name = slugify(spec.name ?? canonical ?? inferNameFromUrl(url));
+    const lifecycle = resolveLifecycle(name, undefined, command);
     const definition: ServerDefinition = {
       name,
       description: spec.description,
       command,
       env: spec.env && Object.keys(spec.env).length > 0 ? spec.env : undefined,
       source: TEMP_SOURCE,
+      lifecycle,
     };
     const persistedEntry: Record<string, unknown> = {
       baseUrl: url.href,
       ...(spec.description ? { description: spec.description } : {}),
       ...(spec.env && Object.keys(spec.env).length > 0 ? { env: spec.env } : {}),
+      ...(lifecycle ? { lifecycle: serializeLifecycle(lifecycle) } : {}),
     };
     return { definition, name, persistedEntry };
   }
@@ -68,7 +73,6 @@ export function resolveEphemeralServer(spec: EphemeralServerSpec): EphemeralServ
   }
   const [commandBinary, ...commandRest] = parts as [string, ...string[]];
   const commandArgs = commandRest.concat(spec.stdioArgs ?? []);
-  const name = slugify(spec.name ?? inferNameFromCommand(parts));
   const cwd = spec.cwd ? path.resolve(spec.cwd) : process.cwd();
   const command: CommandSpec = {
     kind: 'stdio',
@@ -76,18 +80,23 @@ export function resolveEphemeralServer(spec: EphemeralServerSpec): EphemeralServ
     args: commandArgs,
     cwd,
   };
+  const canonical = spec.name ? undefined : canonicalKeepAliveName(command);
+  const name = slugify(spec.name ?? canonical ?? inferNameFromCommand(parts));
+  const lifecycle = resolveLifecycle(name, undefined, command);
   const definition: ServerDefinition = {
     name,
     description: spec.description,
     command,
     env: spec.env && Object.keys(spec.env).length > 0 ? spec.env : undefined,
     source: TEMP_SOURCE,
+    lifecycle,
   };
   const persistedEntry: Record<string, unknown> = {
     command: commandBinary,
     ...(commandArgs.length > 0 ? { args: commandArgs } : {}),
     ...(spec.description ? { description: spec.description } : {}),
     ...(spec.env && Object.keys(spec.env).length > 0 ? { env: spec.env } : {}),
+    ...(lifecycle ? { lifecycle: serializeLifecycle(lifecycle) } : {}),
   };
   if (spec.cwd) {
     persistedEntry.cwd = spec.cwd;
@@ -193,4 +202,19 @@ export function splitCommandLine(input: string): string[] {
     result.push(current);
   }
   return result;
+}
+
+function serializeLifecycle(
+  lifecycle: ReturnType<typeof resolveLifecycle>
+): string | { mode: 'keep-alive'; idleTimeoutMs?: number } | undefined {
+  if (!lifecycle) {
+    return undefined;
+  }
+  if (lifecycle.mode === 'keep-alive' && lifecycle.idleTimeoutMs === undefined) {
+    return 'keep-alive';
+  }
+  if (lifecycle.mode === 'keep-alive') {
+    return { mode: 'keep-alive', idleTimeoutMs: lifecycle.idleTimeoutMs };
+  }
+  return 'ephemeral';
 }

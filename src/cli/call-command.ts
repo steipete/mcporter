@@ -223,7 +223,7 @@ async function attemptCall(
   allowCorrection: boolean
 ): Promise<{ result: unknown; resolvedTool: string }> {
   try {
-    const result = await withTimeout(runtime.callTool(server, tool, { args }), timeoutMs);
+    const result = await withTimeout(runtime.callTool(server, tool, { args, timeoutMs }), timeoutMs);
     return { result, resolvedTool: tool };
   } catch (error) {
     if (error instanceof Error && error.message === 'Timeout') {

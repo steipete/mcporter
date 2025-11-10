@@ -20,6 +20,7 @@ export interface CallToolParams {
   readonly server: string;
   readonly tool: string;
   readonly args?: Record<string, unknown>;
+  readonly timeoutMs?: number;
 }
 
 export interface ListToolsParams {

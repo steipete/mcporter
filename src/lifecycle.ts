@@ -11,13 +11,14 @@ interface OverrideSet {
 }
 
 interface CommandSignature {
+  readonly label: string;
   readonly fragments: string[];
 }
 
 const KEEP_ALIVE_COMMANDS: CommandSignature[] = [
-  { fragments: ['chrome-devtools-mcp'] },
-  { fragments: ['@mobilenext/mobile-mcp', 'mobile-mcp'] },
-  { fragments: ['@playwright/mcp', 'playwright/mcp'] },
+  { label: 'chrome-devtools', fragments: ['chrome-devtools-mcp'] },
+  { label: 'mobile-mcp', fragments: ['@mobilenext/mobile-mcp', 'mobile-mcp'] },
+  { label: 'playwright', fragments: ['@playwright/mcp', 'playwright/mcp'] },
 ];
 
 export function resolveLifecycle(
@@ -26,8 +27,13 @@ export function resolveLifecycle(
   command: CommandSpec
 ): ServerLifecycle | undefined {
   const normalizedName = name.toLowerCase();
-  const forcedDisable = excludeOverride.all || excludeOverride.names.has(normalizedName);
-  const forcedEnable = includeOverride.all || includeOverride.names.has(normalizedName);
+  const canonicalName = canonicalKeepAliveName(command);
+  const candidateNames = new Set<string>([normalizedName]);
+  if (canonicalName) {
+    candidateNames.add(canonicalName);
+  }
+  const forcedDisable = excludeOverride.all || matchesOverride(excludeOverride.names, candidateNames);
+  const forcedEnable = includeOverride.all || matchesOverride(includeOverride.names, candidateNames);
 
   if (forcedEnable) {
     return { mode: 'keep-alive' };
@@ -40,20 +46,21 @@ export function resolveLifecycle(
   if (lifecycle) {
     return lifecycle;
   }
-  if (DEFAULT_KEEP_ALIVE.has(normalizedName) || matchesKeepAliveSignature(command)) {
+  if (Array.from(candidateNames).some((candidate) => DEFAULT_KEEP_ALIVE.has(candidate))) {
     return { mode: 'keep-alive' };
   }
   return undefined;
 }
 
-function matchesKeepAliveSignature(command: CommandSpec): boolean {
+export function canonicalKeepAliveName(command: CommandSpec): string | undefined {
   if (command.kind !== 'stdio') {
-    return false;
+    return undefined;
   }
   const tokens = [command.command, ...command.args].map((token) => token.toLowerCase());
-  return KEEP_ALIVE_COMMANDS.some((signature) =>
+  const match = KEEP_ALIVE_COMMANDS.find((signature) =>
     signature.fragments.some((fragment) => tokens.some((token) => token.includes(fragment)))
   );
+  return match?.label;
 }
 
 function parseList(value: string | undefined): OverrideSet {
@@ -68,6 +75,15 @@ function parseList(value: string | undefined): OverrideSet {
     return { all: true, names: new Set() };
   }
   return { all: false, names: new Set(names) };
+}
+
+function matchesOverride(names: Set<string>, candidates: Set<string>): boolean {
+  for (const candidate of candidates) {
+    if (names.has(candidate)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function coerceLifecycle(raw: RawLifecycle): ServerLifecycle | undefined {

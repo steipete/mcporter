@@ -233,7 +233,10 @@ async function processRequest(
           logEvent(logContext, `callTool start server=${params.server} tool=${params.tool}`);
         }
         try {
-          const result = await runtime.callTool(params.server, params.tool, { args: params.args ?? {} });
+          const result = await runtime.callTool(params.server, params.tool, {
+            args: params.args ?? {},
+            timeoutMs: params.timeoutMs,
+          });
           markActivity(params.server, activity);
           if (loggable) {
             logEvent(logContext, `callTool success server=${params.server} tool=${params.tool}`);

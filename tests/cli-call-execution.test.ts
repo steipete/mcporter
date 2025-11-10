@@ -37,7 +37,7 @@ describe('CLI call execution behavior', () => {
     );
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     await handleCall(runtime, ['linear', 'limit=5']);
-    expect(callTool).toHaveBeenCalledWith('linear', toolName, { args: { limit: 5 } });
+    expect(callTool).toHaveBeenCalledWith('linear', toolName, expect.objectContaining({ args: { limit: 5 } }));
     logSpy.mockRestore();
   });
 
@@ -84,9 +84,13 @@ describe('CLI call execution behavior', () => {
     });
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     await handleCall(runtime, [command, 'domain=answeroverflow.com']);
-    expect(callTool).toHaveBeenCalledWith(adhocName, 'getDomainAvailability', {
-      args: { domain: 'answeroverflow.com' },
-    });
+    expect(callTool).toHaveBeenCalledWith(
+      adhocName,
+      'getDomainAvailability',
+      expect.objectContaining({
+        args: { domain: 'answeroverflow.com' },
+      })
+    );
     logSpy.mockRestore();
   });
 
@@ -132,8 +136,8 @@ describe('CLI call execution behavior', () => {
     const notes = logSpy.mock.calls.map((call) => call.join(' '));
     expect(notes.some((line) => line.includes('Auto-corrected tool call to linear.list_issues'))).toBe(true);
     expect(callTool).toHaveBeenCalledTimes(2);
-    expect(callTool).toHaveBeenNthCalledWith(1, 'linear', 'listIssues', { args: {} });
-    expect(callTool).toHaveBeenNthCalledWith(2, 'linear', 'list_issues', { args: {} });
+    expect(callTool).toHaveBeenNthCalledWith(1, 'linear', 'listIssues', expect.objectContaining({ args: {} }));
+    expect(callTool).toHaveBeenNthCalledWith(2, 'linear', 'list_issues', expect.objectContaining({ args: {} }));
     expect(listTools).toHaveBeenCalledWith('linear', { autoAuthorize: true, includeSchema: false });
 
     logSpy.mockRestore();

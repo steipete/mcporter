@@ -48,6 +48,7 @@ export type RuntimeLogger = Logger;
 
 export interface CallOptions {
   readonly args?: CallToolRequest['params']['arguments'];
+  readonly timeoutMs?: number;
 }
 
 export interface ListToolsOptions {
@@ -193,7 +194,14 @@ class McpRuntime implements Runtime {
       name: toolName,
       arguments: options.args ?? {},
     };
-    return client.callTool(params);
+    const resultPromise = client.callTool(params);
+    const timeoutMs = normalizeTimeout(options.timeoutMs);
+    if (!timeoutMs) {
+      return resultPromise;
+    }
+    return raceWithTimeout(resultPromise, timeoutMs, () => {
+      void this.close(server).catch(() => {});
+    });
   }
 
   // listResources delegates to the MCP resources/list method with passthrough params.
@@ -486,6 +494,36 @@ function waitForAuthorizationCodeWithTimeout(
       (code) => {
         clearTimeout(timer);
         resolve(code);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+function normalizeTimeout(raw?: number): number | undefined {
+  if (raw == null) {
+    return undefined;
+  }
+  if (!Number.isFinite(raw)) {
+    return undefined;
+  }
+  const coerced = Math.trunc(raw);
+  return coerced > 0 ? coerced : undefined;
+}
+
+function raceWithTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout?: () => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      onTimeout?.();
+      reject(new Error('Timeout'));
+    }, timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
       },
       (error) => {
         clearTimeout(timer);

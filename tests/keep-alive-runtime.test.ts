@@ -85,8 +85,13 @@ describe('createKeepAliveRuntime', () => {
       keepAliveServers: new Set(['alpha']),
     });
 
-    await keepAliveRuntime.callTool('alpha', 'ping', { args: { value: 1 } });
-    expect(daemon.callTool).toHaveBeenCalledWith({ server: 'alpha', tool: 'ping', args: { value: 1 } });
+    await keepAliveRuntime.callTool('alpha', 'ping', { args: { value: 1 }, timeoutMs: 4_200 });
+    expect(daemon.callTool).toHaveBeenCalledWith({
+      server: 'alpha',
+      tool: 'ping',
+      args: { value: 1 },
+      timeoutMs: 4_200,
+    });
 
     await keepAliveRuntime.listTools('alpha', { includeSchema: true });
     expect(daemon.listTools).toHaveBeenCalledWith({ server: 'alpha', includeSchema: true, autoAuthorize: undefined });

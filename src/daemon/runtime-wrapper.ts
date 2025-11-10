@@ -61,6 +61,7 @@ class KeepAliveRuntime implements Runtime {
         server,
         tool: toolName,
         args: options?.args,
+        timeoutMs: options?.timeoutMs,
       });
     }
     return this.base.callTool(server, toolName, options);
