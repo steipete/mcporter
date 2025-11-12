@@ -3,16 +3,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { launchDaemonDetached } from './launch.js';
 import { getDaemonMetadataPath, getDaemonSocketPath } from './paths.js';
-import type {
-  CallToolParams,
-  CloseServerParams,
-  DaemonRequest,
-  DaemonRequestMethod,
-  DaemonResponse,
-  ListResourcesParams,
-  ListToolsParams,
-  StatusResult,
-} from './protocol.js';
+import type { CallToolParams, CloseServerParams, DaemonRequest, DaemonRequestMethod, DaemonResponse, ListResourcesParams, ListToolsParams, StatusResult } from './protocol.js';
 
 export interface DaemonClientOptions {
   readonly configPath: string;
@@ -183,7 +174,11 @@ export class DaemonClient {
       socket.setTimeout(timeoutMs, () => {
         // If the daemon doesn't answer in time we treat it as a transport error, destroy the socket,
         // and let invoke() restart the daemon so hung keep-alive servers get a fresh start.
-        socket.destroy(Object.assign(new Error('Daemon request timed out.'), { code: 'ETIMEDOUT' }));
+        socket.destroy(
+          Object.assign(new Error('Daemon request timed out.'), {
+            code: 'ETIMEDOUT',
+          })
+        );
       });
       let buffer = '';
       socket.on('connect', () => {
@@ -191,7 +186,7 @@ export class DaemonClient {
           if (error) {
             finishReject(error);
           }
-          socket.end();
+          // Do not end the socket here; allow the server to respond and close.
         });
       });
       socket.on('data', (chunk) => {
