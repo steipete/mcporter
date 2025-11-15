@@ -94,6 +94,20 @@
     "shadcn": {
       "description": "shadcn/ui registry MCP for browsing component recipes.",
       "baseUrl": "https://www.shadcn.io/api/mcp"
+    },
+    "iterm": {
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "/Users/steipete/Projects/iterm-mcp",
+        "exec",
+        "node",
+        "build/index.js"
+      ],
+      "description": "iTerm2 terminal bridge via local iterm-mcp",
+      "env": {
+        "npm_config_loglevel": "error"
+      }
     }
   },
   "imports": [
