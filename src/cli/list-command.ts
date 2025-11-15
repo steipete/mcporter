@@ -119,7 +119,9 @@ export async function handleList(
         );
       }
       const spinner =
-        flags.format === 'text' && supportsSpinner ? ora(`Discovering ${servers.length} server(s)…`).start() : undefined;
+        flags.format === 'text' && supportsSpinner
+          ? ora(`Discovering ${servers.length} server(s)…`).start()
+          : undefined;
       const renderedResults =
         flags.format === 'text'
           ? (Array.from({ length: servers.length }, () => undefined) as Array<
@@ -136,7 +138,10 @@ export async function handleList(
         (async (): Promise<ListSummaryResult> => {
           const startedAt = Date.now();
           try {
-            const tools = await withTimeout(runtime.listTools(server.name, { autoAuthorize: false }), perServerTimeoutMs);
+            const tools = await withTimeout(
+              runtime.listTools(server.name, { autoAuthorize: false }),
+              perServerTimeoutMs
+            );
             return {
               server,
               status: 'ok' as const,

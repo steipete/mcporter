@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ServerDefinition } from '../src/config.js';
 import { handleList } from '../src/cli/list-command.js';
+import type { ServerDefinition } from '../src/config.js';
 import type { Runtime, ServerToolInfo } from '../src/runtime.js';
 import * as sdkPatches from '../src/sdk-patches.js';
 
@@ -8,20 +8,22 @@ function buildServerDefinition(name: string): ServerDefinition {
   return {
     name,
     description: `${name} server`,
-    command: { kind: 'stdio', command: name, args: [] },
+    command: { kind: 'stdio', command: name, args: [], cwd: '/tmp' },
     source: { kind: 'local', path: '/tmp/mcporter.json' },
   };
 }
 
 function createRuntime(definitions: ServerDefinition[]) {
-  const listTools = vi.fn(async (_name: string, _options?: unknown): Promise<ServerToolInfo[]> => [
-    {
-      name: 'doctor',
-      description: 'Runs diagnostics',
-      inputSchema: undefined,
-      outputSchema: undefined,
-    },
-  ]);
+  const listTools = vi.fn(
+    async (_name: string, _options?: unknown): Promise<ServerToolInfo[]> => [
+      {
+        name: 'doctor',
+        description: 'Runs diagnostics',
+        inputSchema: undefined,
+        outputSchema: undefined,
+      },
+    ]
+  );
   const runtime: Runtime = {
     listServers: () => definitions.map((entry) => entry.name),
     getDefinitions: () => definitions,

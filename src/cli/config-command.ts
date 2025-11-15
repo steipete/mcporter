@@ -91,7 +91,8 @@ const CONFIG_HELP_ENTRIES: Record<ConfigSubcommand, ConfigHelpEntry> = {
     name: 'add [options] <name> [target]',
     summary: 'Persist a server definition',
     usage: 'mcporter config add [options] <name> [target]',
-    description: 'Adds HTTP or stdio servers to the local config. Accepts URLs, commands, env vars, and OAuth metadata.',
+    description:
+      'Adds HTTP or stdio servers to the local config. Accepts URLs, commands, env vars, and OAuth metadata.',
     flags: [
       { flag: '--url <https://host>', description: 'Set the HTTP/S base URL (implies http transport).' },
       { flag: '--command <binary>', description: 'Set the stdio executable (implies stdio transport).' },
@@ -126,7 +127,8 @@ const CONFIG_HELP_ENTRIES: Record<ConfigSubcommand, ConfigHelpEntry> = {
     name: 'import <kind> [options]',
     summary: 'Inspect or copy imported servers',
     usage: 'mcporter config import <kind> [options]',
-    description: 'Shows entries from Cursor, Claude, Codex, and other supported imports. Optionally copies them locally.',
+    description:
+      'Shows entries from Cursor, Claude, Codex, and other supported imports. Optionally copies them locally.',
     flags: [
       { flag: '--path <file>', description: 'Manually point at a config file path.' },
       { flag: '--filter <substring>', description: 'Match server names by substring before listing/copying.' },
