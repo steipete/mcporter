@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### CLI
+- `mcporter list` suppresses raw STDIO stderr dumps when enumerating all configured servers, keeping the summary output readable while still surfacing per-server health statuses.
 - `mcporter config <subcommand> --help` (and `mcporter config help <subcommand>`) now display detailed usage, flags, and examples for every config subcommand instead of returning a placeholder message. Inline `--help` tokens are intercepted before executing the command, so flows like `mcporter config add --help` no longer throw usage errors.
 - `mcporter config doctor` prints the project and system config paths before reporting diagnostics, making it obvious which files were inspected when tracking down configuration issues.
 
