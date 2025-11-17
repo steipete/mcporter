@@ -11,22 +11,49 @@ export interface CallResult<T = unknown> {
 
 // extractContentArray pulls the `content` array from MCP response envelopes.
 function extractContentArray(raw: unknown): unknown[] | null {
-  if (
-    raw &&
-    typeof raw === 'object' &&
-    'content' in (raw as Record<string, unknown>) &&
-    Array.isArray((raw as Record<string, unknown>).content)
-  ) {
-    return (raw as { content: unknown[] }).content;
+  if (!raw || typeof raw !== 'object') {
+    return null;
   }
+
+  const obj = raw as Record<string, unknown>;
+
+  // Check for content array at top level
+  if ('content' in obj && Array.isArray(obj.content)) {
+    return obj.content as unknown[];
+  }
+
+  // Check for content array nested inside 'raw' wrapper
+  if ('raw' in obj && obj.raw && typeof obj.raw === 'object') {
+    const nested = obj.raw as Record<string, unknown>;
+    if ('content' in nested && Array.isArray(nested.content)) {
+      return nested.content as unknown[];
+    }
+  }
+
   return null;
 }
 
 // extractStructuredContent returns the structuredContent field when present.
 function extractStructuredContent(raw: unknown): unknown {
-  if (raw && typeof raw === 'object' && 'structuredContent' in (raw as Record<string, unknown>)) {
-    return (raw as Record<string, unknown>).structuredContent;
+  if (!raw || typeof raw !== 'object') {
+    return null;
   }
+
+  const obj = raw as Record<string, unknown>;
+
+  // Check for structuredContent at top level
+  if ('structuredContent' in obj) {
+    return obj.structuredContent;
+  }
+
+  // Check for structuredContent nested inside 'raw' wrapper
+  if ('raw' in obj && obj.raw && typeof obj.raw === 'object') {
+    const nested = obj.raw as Record<string, unknown>;
+    if ('structuredContent' in nested) {
+      return nested.structuredContent;
+    }
+  }
+
   return null;
 }
 
