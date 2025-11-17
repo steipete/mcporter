@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -15,7 +17,8 @@ import { closeTransportAndWait } from './runtime-process-utils.js';
 import './sdk-patches.js';
 
 const PACKAGE_NAME = 'mcporter';
-const CLIENT_VERSION = '0.5.11';
+// Keep version in one place by reading package.json via require (Node ESM-friendly without assertions).
+const CLIENT_VERSION = createRequire(import.meta.url)('../package.json').version;
 const DEFAULT_OAUTH_CODE_TIMEOUT_MS = 60_000;
 const OAUTH_CODE_TIMEOUT_MS = parseOAuthTimeout(
   process.env.MCPORTER_OAUTH_TIMEOUT_MS ?? process.env.MCPORTER_OAUTH_TIMEOUT
