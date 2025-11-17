@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RolldownPlugin } from 'rolldown';
+import { markExecutable, safeCopyFile } from './fs-helpers.js';
 import { verifyBunAvailable } from './runtime.js';
 
 const localRequire = createRequire(import.meta.url);
@@ -77,7 +78,7 @@ async function bundleWithRolldown({
     sourcemap: false,
     minify,
   });
-  await fs.chmod(absTarget, 0o755);
+  await markExecutable(absTarget);
   return absTarget;
 }
 
@@ -101,7 +102,7 @@ async function bundleWithBun({
   const stagingEntry = path.join(stagingDir, path.basename(sourcePath));
   // Copy the template into the package tree so Bun sees our node_modules deps even when the
   // CLI runs from an empty working directory.
-  await fs.copyFile(sourcePath, stagingEntry);
+  await safeCopyFile(sourcePath, stagingEntry);
   await ensureBundlerDeps(stagingDir);
   try {
     const args = ['build', stagingEntry, '--outfile', absTarget, '--target', runtimeKind === 'bun' ? 'bun' : 'node'];
@@ -120,7 +121,7 @@ async function bundleWithBun({
   } finally {
     await fs.rm(stagingDir, { recursive: true, force: true }).catch(() => {});
   }
-  await fs.chmod(absTarget, 0o755);
+  await markExecutable(absTarget);
   return absTarget;
 }
 
@@ -141,7 +142,7 @@ export async function compileBundleWithBun(bundlePath: string, outputPath: strin
     );
   });
 
-  await fs.chmod(outputPath, 0o755);
+  await markExecutable(outputPath);
 }
 
 export function resolveBundleTarget({

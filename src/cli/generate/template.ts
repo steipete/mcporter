@@ -4,6 +4,7 @@ import type { CliArtifactMetadata } from '../../cli-metadata.js';
 import type { ServerDefinition } from '../../config.js';
 import { MCPORTER_VERSION } from '../../runtime.js';
 import { buildToolDoc, type ToolOptionDoc } from '../list-detail-helpers.js';
+import { markExecutable } from './fs-helpers.js';
 import type { GeneratedOption, ToolMetadata } from './tools.js';
 import { buildEmbeddedSchemaMap } from './tools.js';
 
@@ -27,7 +28,7 @@ export async function writeTemplate(input: TemplateInput): Promise<string> {
     : path.resolve(process.cwd(), `${input.serverName}.ts`);
   await fs.mkdir(path.dirname(resolvedOutput), { recursive: true });
   await fs.writeFile(resolvedOutput, renderTemplate(input), 'utf8');
-  await fs.chmod(resolvedOutput, 0o755);
+  await markExecutable(resolvedOutput);
   return resolvedOutput;
 }
 
