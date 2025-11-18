@@ -43,6 +43,12 @@ const RawLoggingSchema = z
   })
   .optional();
 
+const ToolResultMappingSchema = z.object({
+  pick: z.array(z.string()).optional(),
+});
+
+export type ToolResultMapping = z.infer<typeof ToolResultMappingSchema>;
+
 export const RawEntrySchema = z.object({
   description: z.string().optional(),
   baseUrl: z.string().optional(),
@@ -68,6 +74,7 @@ export const RawEntrySchema = z.object({
   bearer_token_env: z.string().optional(),
   lifecycle: RawLifecycleSchema.optional(),
   logging: RawLoggingSchema,
+  resultMapping: z.record(ToolResultMappingSchema).optional(),
 });
 
 export const RawConfigSchema = z.object({
@@ -127,6 +134,7 @@ export interface ServerDefinition {
   readonly sources?: readonly ServerSource[];
   readonly lifecycle?: ServerLifecycle;
   readonly logging?: ServerLoggingOptions;
+  readonly resultMapping?: Record<string, ToolResultMapping>;
 }
 
 export interface LoadConfigOptions {

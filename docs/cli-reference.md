@@ -26,6 +26,9 @@ A quick reference for the primary `mcporter` subcommands. Each command inherits
   - `--server`, `--tool` – alternate way to target a tool.
   - `--timeout <ms>` – override call timeout (defaults to `CALL_TIMEOUT_MS`).
   - `--output text|markdown|json|raw` – choose how to render the `CallResult`.
+    - `json` output respects any `resultMapping` configured for the server+tool in
+      `config/mcporter.json`—`CallResult.json()` returns the projected payload by default.
+    - `raw` ignores mappings and shows the full MCP envelope.
   - `--tail-log` – stream tail output when the tool returns log handles.
 
 ## `mcporter generate-cli`

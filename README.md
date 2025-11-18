@@ -269,6 +269,35 @@ Drop down to `runtime.callTool()` whenever you need explicit control over argume
 
 Call `mcporter list <server>` any time you need the TypeScript-style signature, optional parameter hints, and sample invocations that match the CLI's function-call syntax.
 
+### Config-based result mapping
+
+Some tools return very large JSON objects when you only care about a few fields. You can declare per-tool projections in `config/mcporter.json` so that `CallResult.json()` only returns the fields you care about while `.raw` still exposes the full MCP envelope.
+
+```jsonc
+{
+  "mcpServers": {
+    "linear": {
+      "baseUrl": "https://mcp.linear.app/mcp",
+      "resultMapping": {
+        "list_documents": {
+          // Only keep these fields from the JSON result
+          "pick": ["id", "title", "url"]
+        }
+      }
+    }
+  }
+}
+```
+
+Rules:
+
+* `resultMapping` is defined per server.
+* Keys under `resultMapping` are the canonical MCP tool names (`list_documents`, `search_documentation`, etc.) as printed by `mcporter list <server>`.
+* `pick` is an array of JSON paths relative to the root value returned by `.json()`. Paths use simple dot-notation for nesting (`"customer.name"`, `"metadata.stats.views"`).
+* Nested paths preserve their structure in the output—`["id", "metadata.author"]` produces `{ id: "...", metadata: { author: "..." } }`.
+* When the root result is an array, the projection is applied to each element.
+* The mapping only affects `.json()` and helpers that depend on it (including `mcporter call --output json`). `CallResult.raw` and `--output raw` still show the full unmodified MCP response.
+
 ## Generate a Standalone CLI
 
 Turn any server definition into a shareable CLI artifact:
@@ -356,6 +385,16 @@ Run `mcporter config …` via your package manager (pnpm, npm, npx, etc.) when y
 			"command": "npx",
 			"args": ["-y", "chrome-devtools-mcp@latest"],
 			"env": { "npm_config_loglevel": "error" }
+		},
+		"linear": {
+			"baseUrl": "https://mcp.linear.app/mcp",
+
+			"resultMapping": {
+				// Only keep selected fields when calling list_documents
+				"list_documents": {
+					"pick": ["id", "title", "url"]
+				}
+			}
 		}
 	},
 	"imports": ["cursor", "claude-code", "claude-desktop", "codex", "windsurf", "opencode", "vscode"]
@@ -368,6 +407,7 @@ What MCPorter handles for you:
 - Automatic OAuth token caching under `~/.mcporter/<server>/` unless you override `tokenCacheDir`.
 - Stdio commands inherit the directory of the file that defined them (imports or local config).
 - Import precedence matches the array order; omit `imports` to use the default `["cursor", "claude-code", "claude-desktop", "codex", "windsurf", "opencode", "vscode"]`.
+- You can override imported servers by adding a local entry with the same name and a `resultMapping` block; MCPorter's merge logic keeps the imported transport definition but lets you configure mappings and other overrides locally.
 
 Provide `configPath` or `rootDir` to CLI/runtime calls when you juggle multiple config files side by side.
 

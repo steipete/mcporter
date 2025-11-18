@@ -2,7 +2,9 @@ import { createRequire } from 'node:module';
 
 import type { CallToolRequest, ListResourcesRequest } from '@modelcontextprotocol/sdk/types.js';
 import { loadServerDefinitions, type ServerDefinition } from './config.js';
+import type { ToolResultMapping } from './config-schema.js';
 import { createPrefixedConsoleLogger, type Logger, type LogLevel, resolveLogLevelFromEnv } from './logging.js';
+import { createCallResult } from './result-utils.js';
 import { closeTransportAndWait } from './runtime-process-utils.js';
 import './sdk-patches.js';
 import { shouldResetConnection } from './runtime/errors.js';
@@ -192,10 +194,18 @@ class McpRuntime implements Runtime {
         resetTimeoutOnProgress: true,
         maxTotalTimeout: timeoutMs,
       });
-      if (!timeoutMs) {
-        return await resultPromise;
+      const rawResult = timeoutMs ? await raceWithTimeout(resultPromise, timeoutMs) : await resultPromise;
+
+      // Apply config-driven result mapping if configured for this server+tool
+      const mapping = this.lookupResultMapping(server, toolName);
+      if (!mapping || !mapping.pick || mapping.pick.length === 0) {
+        return rawResult;
       }
-      return await raceWithTimeout(resultPromise, timeoutMs);
+
+      // Create CallResult, apply projection, and return the result with overridden json()
+      const base = createCallResult(rawResult);
+      const projected = base.pick(mapping.pick);
+      return base.withJsonOverride(projected).raw;
     } catch (error) {
       // Runtime timeouts and transport crashes should tear down the cached connection so
       // the daemon (or direct runtime) can relaunch the MCP server on the next attempt.
@@ -297,6 +307,15 @@ class McpRuntime implements Runtime {
       const detail = closeError instanceof Error ? closeError.message : String(closeError);
       this.logger.warn(`Failed to reset '${normalized}' after error: ${detail}`);
     }
+  }
+
+  private lookupResultMapping(server: string, toolName: string): ToolResultMapping | undefined {
+    const definition = this.definitions.get(server.trim());
+    if (!definition || !definition.resultMapping) {
+      return undefined;
+    }
+
+    return definition.resultMapping[toolName];
   }
 }
 
