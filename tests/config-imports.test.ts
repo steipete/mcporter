@@ -379,4 +379,39 @@ describe('config imports', () => {
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
   });
+
+  it('honors the OPENCODE_CONFIG_DIR override', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcporter-opencode-dir-'));
+    const dirConfigPath = path.join(tempDir, 'opencode.jsonc');
+    fs.mkdirSync(tempDir, { recursive: true });
+    fs.writeFileSync(
+      dirConfigPath,
+      JSON.stringify(
+        {
+          mcp: {
+            'opencode-dir-only': {
+              command: 'dir-cli',
+              args: ['--stdio'],
+            },
+          },
+        },
+        null,
+        2
+      )
+    );
+    process.env.OPENCODE_CONFIG_DIR = tempDir;
+    try {
+      const servers = await loadServerDefinitions({ rootDir: FIXTURE_ROOT });
+      const dirServer = servers.find((server) => server.name === 'opencode-dir-only');
+      expect(dirServer).toBeDefined();
+      expect(dirServer?.source).toEqual({
+        kind: 'import',
+        path: dirConfigPath,
+        importKind: 'opencode',
+      });
+    } finally {
+      process.env.OPENCODE_CONFIG_DIR = undefined;
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

@@ -183,7 +183,7 @@ function normalizeCommandInput(value: string): CommandInput {
   if (looksLikeInlineCommand(value)) {
     return parseInlineCommand(value);
   }
-  return value;
+  return { command: value };
 }
 
 function looksLikeInlineCommand(value: string): boolean {

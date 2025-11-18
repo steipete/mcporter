@@ -80,6 +80,16 @@ describe('generate-cli runner internals', () => {
     expect(inferred).toBe('shadcn');
   });
 
+  it('wraps single-token stdio commands when passed via --command', () => {
+    const args = ['--command', './scripts/mcp-server.ts'];
+    const parsed = parseGenerateFlags([...args]);
+    expect(parsed.command).toBeDefined();
+    const spec = parsed.command as { command: string; args?: string[] };
+    expect(spec).toEqual({ command: './scripts/mcp-server.ts' });
+    const inferred = parsed.command !== undefined ? inferNameFromCommand(parsed.command) : undefined;
+    expect(inferred).toBe('mcp-server');
+  });
+
   it('treats positional inline commands as generate-cli targets', () => {
     const args = ['npx -y chrome-devtools-mcp@latest'];
     const parsed = parseGenerateFlags([...args]);
