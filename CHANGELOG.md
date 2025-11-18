@@ -253,3 +253,22 @@
 ## [0.1.0]
 
 - Initial release.
+## [0.6.2] - 2025-11-18
+
+### Platform resilience (Windows/WSL)
+- Added `fs-helpers` that treat chmod/copy failures on NTFS/DrvFs as best-effort so CLI generation keeps working on WSL mounts.
+- Documented Windows/WSL workflows: install/test from ext4 copies, remount guidance for /mnt/c, and syncing tips.
+
+### CLI/runtime
+- Global flag parsing moved into `cli-factory` for consistent log-level/oauth-timeout handling across commands.
+- `daemon` host/client hardened and covered with new tests; idle eviction and restart paths verified.
+- Imports now include platform-aware defaults for Cursor/Claude/Windsurf/VS Code/OpenCode configs with path dedupe.
+
+### StdIO MCP coverage
+- Added stdio e2e tests using in-repo filesystem & memory MCP fixtures to ensure list/call works via execPath.
+
+### Content extraction
+- `createCallResult` now reads nested `raw.content`/`raw.structuredContent` so tools that wrap responses render text/markdown/json correctly; new unit tests cover text joining, markdown, and JSON.
+
+### Docs
+- New `docs/windows.md` with WSL/NTFS tips; added to docs index.

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { restoreCwdSafely } from './fixtures/test-helpers.js';
 
 process.env.MCPORTER_DISABLE_AUTORUN = '1';
 const cliModulePromise = import('../src/cli.js');
@@ -28,7 +29,7 @@ describe('mcporter list --verbose end-to-end', () => {
     restoreHomedir?.();
     delete process.env.MCPORTER_NO_FORCE_EXIT;
     process.env = { ...originalEnv };
-    process.chdir(originalCwd);
+    restoreCwdSafely(originalCwd);
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     process.exitCode = undefined;
   });

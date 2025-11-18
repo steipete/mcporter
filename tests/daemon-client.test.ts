@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import net from 'node:net';
-import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DaemonClient, resolveDaemonPaths } from '../src/daemon/client.js';
+import { makeShortTempDir } from './fixtures/test-helpers.js';
 
 describe('daemon client', () => {
   it('keeps stdio sockets open until the daemon responds', async () => {
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mcporter-daemon-client-'));
+    const tmpDir = await makeShortTempDir('mcpd');
     const originalDir = process.env.MCPORTER_DAEMON_DIR;
     process.env.MCPORTER_DAEMON_DIR = tmpDir;
     const configPath = path.join(tmpDir, 'config.json');
