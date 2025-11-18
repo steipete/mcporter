@@ -22,3 +22,4 @@ summary: What to do when pnpm/test flows fail on NTFS-backed worktrees.
 * `safeCopyFile` falls back to a manual read/write when DrvFs blocks `copyFile`, keeping Bun bundling stable on Windows.
 * These helpers only affect Windows/WSL behavior—Linux/macOS paths still perform real `chmod`/`copyFile`.
 * Regenerated CLIs (for example `node dist/cli.js generate-cli context7 --config config/mcporter.json --bundle /mnt/c/Temp/context7-cli.js --runtime node`) now complete successfully even when the bundle lives on `/mnt/c`, and the resulting executable runs with `node /mnt/c/Temp/context7-cli.js --help`.
+* When running `mcporter generate-cli` with `--command ./relative-script.ts`, the CLI no longer tries to normalize the path into an HTTP URL—relative/bare commands are always treated as STDIO transports now, matching the PowerShell/WSL behavior you expect.
