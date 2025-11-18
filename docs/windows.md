@@ -14,6 +14,7 @@ summary: What to do when pnpm/test flows fail on NTFS-backed worktrees.
 * Use the ext4 copy (`~/mcporter-wsl`) for `pnpm lint`, `pnpm typecheck`, and the Vitest suites. All tests pass there (71 files / 280 tests, 1 file and 2 tests skipped).
 * Whole-repo `pnpm test` on `/mnt/c` repeatedly times out because Vitest cannot start workers when the node_modules tree belongs to root or sits on NTFS. Copy the repo to ext4 or fix ownership before retrying.
 * When working cross-filesystem, remember to sync the edited source files back to the canonical `/mnt/c/Projects/mcporter` tree (e.g., `rsync -a ~/mcporter-wsl/src/cli/generate/{template,artifacts,fs-helpers}.ts /mnt/c/Projects/mcporter/src/cli/generate/`).
+* The stdio integration suite now vendors two tiny fixtures under `tests/fixtures/stdio-*.mjs` that spin up filesystem/memory MCP servers via `node`. The tests shell out to `process.execPath`, so make sure your PATH resolves `node` correctly (fnm/nvs setups sometimes expose only `node.exe` on Windows). If you need to debug them manually, run `./runner pnpm exec vitest run tests/stdio-servers.integration.test.ts` so the guardrails apply.
 
 ## Windows-specific fixes in the repo
 
