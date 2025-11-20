@@ -51,6 +51,9 @@ importers:
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20251121.1
         version: 7.0.0-dev.20251121.1
+      bun:
+        specifier: runtime:^1.3.2
+        version: runtime:1.3.2
       bun-types:
         specifier: ^1.3.3
         version: 1.3.3
@@ -60,6 +63,9 @@ importers:
       express:
         specifier: ^5.1.0
         version: 5.1.0
+      node:
+        specifier: runtime:^24.10.0
+        version: runtime:24.11.1
       oxlint:
         specifier: ^1.29.0
         version: 1.29.0(oxlint-tsgolint@0.8.0)
@@ -751,6 +757,85 @@ packages:
   bun-types@1.3.3:
     resolution: {integrity: sha512-z3Xwlg7j2l9JY27x5Qn3Wlyos8YAp0kKRlrePAOjgjMGS5IG6E7Jnlx736vH9UVI4wUICwwhC9anYL++XeOgTQ==}
 
+  bun@runtime:1.3.2:
+    resolution:
+      type: variations
+      variants:
+        - resolution:
+            archive: zip
+            bin: bun
+            integrity: sha256-2FhHmC21dFGBMKRVgrzxTY4r6WELZstQRsIDSFeLD+I=
+            prefix: bun-darwin-aarch64
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-darwin-aarch64.zip
+          targets:
+            - cpu: arm64
+              os: darwin
+        - resolution:
+            archive: zip
+            bin: bun
+            integrity: sha256-eNTwyGN0J6wL5VY5ppf/agJejrlAppIMpQhgPEGlp7A=
+            prefix: bun-darwin-x64
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-darwin-x64.zip
+          targets:
+            - cpu: x64
+              os: darwin
+        - resolution:
+            archive: zip
+            bin: bun
+            integrity: sha256-urqUctj+AoPHuZP9Z/2RBUD3YIyGDtMo+jMcTQwNvlQ=
+            prefix: bun-linux-aarch64-musl
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-linux-aarch64-musl.zip
+          targets:
+            - cpu: arm64
+              os: linux
+              libc: musl
+        - resolution:
+            archive: zip
+            bin: bun
+            integrity: sha256-/jjBO2trRQr05PD7jgSyLspT+c1xBo0dHuv09KRPAvs=
+            prefix: bun-linux-aarch64
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-linux-aarch64.zip
+          targets:
+            - cpu: arm64
+              os: linux
+        - resolution:
+            archive: zip
+            bin: bun
+            integrity: sha256-bndzZQmHVatRadGmCStq4Ydh9KbkoyNlJSrZieSUiFo=
+            prefix: bun-linux-x64-musl
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-linux-x64-musl.zip
+          targets:
+            - cpu: x64
+              os: linux
+              libc: musl
+        - resolution:
+            archive: zip
+            bin: bun
+            integrity: sha256-DLVqRIS9d2Sj7vm55nq0V4QJgSh7RnlJdNHmYSy/Zwk=
+            prefix: bun-linux-x64
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-linux-x64.zip
+          targets:
+            - cpu: x64
+              os: linux
+        - resolution:
+            archive: zip
+            bin: bun.exe
+            integrity: sha256-XnO066DMCQhd8UHhFnYJsQBXDxoNU42H+bnA2lSvWNY=
+            prefix: bun-windows-x64
+            type: binary
+            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.2/bun-windows-x64.zip
+          targets:
+            - cpu: x64
+              os: win32
+    version: 1.3.2
+    hasBin: true
+
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
@@ -1050,6 +1135,96 @@ packages:
   negotiator@1.0.0:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
+
+  node@runtime:24.11.1:
+    resolution:
+      type: variations
+      variants:
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-mLqRmgOQ2MQi1LsxBexbd3I89UFDtMHkudd2kPoHUgY=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-aix-ppc64.tar.gz
+          targets:
+            - cpu: ppc64
+              os: aix
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-sFqjpm7+aAAj+TC9WvP9u9VCeU2lZEyirXEdaMvU3DU=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-darwin-arm64.tar.gz
+          targets:
+            - cpu: arm64
+              os: darwin
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-CWCBttb83T9boPXx1EpH6DA3rS546tomZxwlL+ZN0RE=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-darwin-x64.tar.gz
+          targets:
+            - cpu: x64
+              os: darwin
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-Dck+xceYsNNH8GjbbSBdA96ppxdl5qU5IraCuRJl1x8=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-arm64.tar.gz
+          targets:
+            - cpu: arm64
+              os: linux
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-zUFAfzNS3i8GbqJsXF0OqbY2I3TWthg4Wp8una0iBhY=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-ppc64le.tar.gz
+          targets:
+            - cpu: ppc64le
+              os: linux
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-XUyLyl+PJZP5CB3uOYNHYOhaFvphyVDz6G7IWZbwBVA=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-s390x.tar.gz
+          targets:
+            - cpu: s390x
+              os: linux
+        - resolution:
+            archive: tarball
+            bin: bin/node
+            integrity: sha256-WKX/XMjyIA5Fi+oi4ynVwZlKobER1JnKRuwkEdWCOco=
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-linux-x64.tar.gz
+          targets:
+            - cpu: x64
+              os: linux
+        - resolution:
+            archive: zip
+            bin: node.exe
+            integrity: sha256-zp7k5Ufr3/NVvrSOMJsWbCTfa+ApHJ6vEDzhXz3p5bQ=
+            prefix: node-v24.11.1-win-arm64
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-win-arm64.zip
+          targets:
+            - cpu: arm64
+              os: win32
+        - resolution:
+            archive: zip
+            bin: node.exe
+            integrity: sha256-U1WubXxJ7dz959NKw0hoIGAKgxv4HcO9ylyNtqm7DnY=
+            prefix: node-v24.11.1-win-x64
+            type: binary
+            url: https://nodejs.org/download/release/v24.11.1/node-v24.11.1-win-x64.zip
+          targets:
+            - cpu: x64
+              os: win32
+    version: 24.11.1
+    hasBin: true
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -1888,6 +2063,8 @@ snapshots:
     dependencies:
       '@types/node': 24.10.1
 
+  bun@runtime:1.3.2: {}
+
   bytes@3.1.2: {}
 
   call-bind-apply-helpers@1.0.2:
@@ -2179,6 +2356,8 @@ snapshots:
   nanoid@3.3.11: {}
 
   negotiator@1.0.0: {}
+
+  node@runtime:24.11.1: {}
 
   object-assign@4.1.1: {}
 
