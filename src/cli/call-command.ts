@@ -111,6 +111,40 @@ export async function handleCall(
   dumpActiveHandles('after call (formatted result)');
 }
 
+export function printCallHelp(): void {
+  const lines = [
+    'Usage: mcporter call <selector> [key=value ...] [flags]',
+    '',
+    'Arguments:',
+    '  <selector>             Tool selector (server.tool) or HTTP URL.',
+    '  key=value              Named arguments for the tool call.',
+    '',
+    'Flags:',
+    '  --server <name>        Explicitly set the server name.',
+    '  --tool <name>          Explicitly set the tool name.',
+    '  --args <json>          Pass arguments as a JSON object.',
+    '  --timeout <ms>         Override the call timeout.',
+    '  --tail-log             Tail server logs after the call completes.',
+    '  --json                 Emit JSON output.',
+    '',
+    'Ad-hoc servers:',
+    '  --http-url <url>       Register an HTTP server for this run.',
+    '  --allow-http           Permit plain http:// URLs with --http-url.',
+    '  --stdio <command>      Run a stdio MCP server (repeat --stdio-arg for args).',
+    '  --stdio-arg <value>    Append args to the stdio command (repeatable).',
+    '  --env KEY=value        Inject env vars for stdio servers (repeatable).',
+    '  --cwd <path>           Working directory for stdio servers.',
+    '  --name <value>         Override the display name for ad-hoc servers.',
+    '',
+    'Examples:',
+    '  mcporter call linear.list_issues limit:5',
+    '  mcporter call linear.create_issue title="My Bug" description="It broke"',
+    '  mcporter call --server linear --tool list_issues --args \'{"limit":5}\'',
+    '  mcporter call https://mcp.example.com/mcp.list_tools',
+  ];
+  console.error(lines.join('\n'));
+}
+
 async function maybeDescribeServer(
   runtime: Awaited<ReturnType<typeof import('../runtime.js')['createRuntime']>>,
   server: string,
