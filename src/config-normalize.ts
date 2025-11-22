@@ -46,6 +46,7 @@ export function normalizeServerEntry(
 
   const lifecycle = resolveLifecycle(name, raw.lifecycle, command);
   const logging = normalizeLogging(raw.logging);
+  const resultMapping = raw.resultMapping;
 
   return {
     name,
@@ -60,6 +61,7 @@ export function normalizeServerEntry(
     sources,
     lifecycle,
     logging,
+    resultMapping,
   };
 }
 
