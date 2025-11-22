@@ -9,37 +9,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          run_install: false
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --version
-      - run: pnpm check
-      - run: pnpm build
-      - run: pnpm test
-        env:
-          FIRECRAWL_API_KEY: test
-          LINEAR_API_KEY: test
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          run_install: false
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --version
-      - run: pnpm check
-      - run: pnpm build
-      - run: pnpm test
-        env:
-          FIRECRAWL_API_KEY: test
-          LINEAR_API_KEY: test
-  windows:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
