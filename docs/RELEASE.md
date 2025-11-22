@@ -44,6 +44,7 @@
     - `mcporter-<version>.tgz.sha1` and `mcporter-<version>.tgz.sha256`
     Double-check the uploaded checksums match your local files.
 16. Tag the release (git tag v<version> && git push --tags).
+17. Post-tag housekeeping: add a fresh "Unreleased" stub to CHANGELOG.md (set to "- Nothing yet.") and start a new version section for the just-released patch if it isn’t already recorded.
 
 After the release is live, always update the Homebrew tap and re-verify both installers. That flow should be:
 
