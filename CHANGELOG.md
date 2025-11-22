@@ -3,13 +3,6 @@
 ## [Unreleased]
 - Nothing yet.
 
-## [0.6.4] - 2025-11-22
-### Runtime & CLI
-- Updated to `@modelcontextprotocol/sdk` 1.22.0; inline stdio test server now uses Zod schemas to remain compatible with the SDK’s JSON Schema conversion path.
-
-### Runtime
-- `listTools` now follows SDK pagination, looping through `nextCursor` so long catalogs return complete tool lists.
-
 ## [0.6.3] - 2025-11-22
 ### Runtime & CLI
 - Updated to `@modelcontextprotocol/sdk` 1.22.0; inline stdio test server now uses Zod schemas to remain compatible with the SDK’s JSON Schema conversion path.
