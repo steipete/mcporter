@@ -1,6 +1,8 @@
 # mcporter Changelog
 
 ## [Unreleased]
+### CLI
+- `mcporter call|auth|list help/--help` now print the command-specific usage text instead of attempting to run a server, matching the footer’s “mcporter <command> --help” hint.
 ### Security / Dependencies
 - Override transitive `body-parser` to 2.2.1 (CVE-2025-13466) via pnpm overrides.
 

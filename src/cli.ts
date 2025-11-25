@@ -2,7 +2,7 @@
 import fsPromises from 'node:fs/promises';
 
 import type { EphemeralServerSpec } from './cli/adhoc-server.js';
-import { handleCall as runHandleCall } from './cli/call-command.js';
+import { handleCall as runHandleCall, printCallHelp } from './cli/call-command.js';
 import { buildGlobalContext } from './cli/cli-factory.js';
 import { inferCommandRouting } from './cli/command-inference.js';
 import { handleConfigCli } from './cli/config-command.js';
@@ -145,11 +145,21 @@ export async function runCli(argv: string[]): Promise<void> {
     }
 
     if (resolvedCommand === 'call') {
+      if (consumeHelpTokens(resolvedArgs)) {
+        printCallHelp();
+        process.exitCode = 0;
+        return;
+      }
       await runHandleCall(runtime, resolvedArgs);
       return;
     }
 
     if (resolvedCommand === 'auth') {
+      if (consumeHelpTokens(resolvedArgs)) {
+        printAuthHelp();
+        process.exitCode = 0;
+        return;
+      }
       await handleAuth(runtime, resolvedArgs);
       return;
     }
@@ -502,4 +512,36 @@ async function invokeAuthCommand(runtimeOptions: Parameters<typeof createRuntime
 
 function shouldRetryAuthError(error: unknown): boolean {
   return analyzeConnectionError(error).kind === 'auth';
+}
+
+export function printAuthHelp(): void {
+  const lines = [
+    'Usage: mcporter auth <server | url> [flags]',
+    '',
+    'Purpose:',
+    '  Run the authentication flow for a server without listing tools.',
+    '',
+    'Common flags:',
+    '  --reset                 Clear cached credentials before re-authorizing.',
+    '  --json                  Emit a JSON envelope on failure.',
+    '',
+    'Ad-hoc targets:',
+    '  --http-url <url>        Register an HTTP server for this run.',
+    '  --allow-http            Permit plain http:// URLs with --http-url.',
+    '  --stdio <command>       Run a stdio MCP server (repeat --stdio-arg for args).',
+    '  --stdio-arg <value>     Append args to the stdio command (repeatable).',
+    '  --env KEY=value         Inject env vars for stdio servers (repeatable).',
+    '  --cwd <path>            Working directory for stdio servers.',
+    '  --name <value>          Override the display name for ad-hoc servers.',
+    '  --description <text>    Override the description for ad-hoc servers.',
+    '  --persist <path>        Write the ad-hoc definition to config/mcporter.json.',
+    '  --yes                   Skip confirmation prompts when persisting.',
+    '',
+    'Examples:',
+    '  mcporter auth linear',
+    '  mcporter auth https://mcp.example.com/mcp',
+    '  mcporter auth --stdio "npx -y chrome-devtools-mcp@latest"',
+    '  mcporter auth --http-url http://localhost:3000/mcp --allow-http',
+  ];
+  console.error(lines.join('\n'));
 }
