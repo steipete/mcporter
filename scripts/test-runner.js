@@ -5,6 +5,7 @@
 
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 const args = process.argv.slice(2);
 const translated = [];
@@ -25,8 +26,12 @@ for (let i = 0; i < args.length; i += 1) {
   translated.push(token);
 }
 
-const bin = path.join(process.cwd(), 'node_modules', '.bin', 'vitest');
-const result = spawnSync(bin, ['run', ...positional, ...translated], {
+const require = createRequire(import.meta.url);
+const vitestPkg = require.resolve('vitest/package.json');
+const vitestRoot = path.dirname(vitestPkg);
+const vitestBin = path.join(vitestRoot, 'vitest.mjs');
+
+const result = spawnSync(process.execPath, [vitestBin, 'run', ...positional, ...translated], {
   stdio: 'inherit',
   env: process.env,
 });
