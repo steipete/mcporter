@@ -7,6 +7,8 @@ export interface CallResult<T = unknown> {
   json<J = unknown>(): J | null;
   content(): unknown[] | null;
   structuredContent(): unknown;
+  pick<J = unknown>(paths: string | readonly string[]): J | null;
+  withJsonOverride<J = unknown>(nextJson: J): CallResult<T>;
 }
 
 // extractContentArray pulls the `content` array from MCP response envelopes.
@@ -113,7 +115,9 @@ function tryParseJson(value: unknown): unknown {
 }
 
 // createCallResult wraps a tool response with helpers for common content types.
-export function createCallResult<T = unknown>(raw: T): CallResult<T> {
+export function createCallResult<T = unknown>(raw: T, options?: { jsonOverride?: unknown }): CallResult<T> {
+  const jsonOverride = options?.jsonOverride;
+
   return {
     raw,
     text(joiner = '\n') {
@@ -161,6 +165,10 @@ export function createCallResult<T = unknown>(raw: T): CallResult<T> {
         .join(joiner);
     },
     json<J = unknown>() {
+      if (jsonOverride !== undefined) {
+        return jsonOverride as J;
+      }
+
       const structured = extractStructuredContent(raw);
       const parsedStructured = tryParseJson(structured);
       if (parsedStructured !== null) {
@@ -228,6 +236,63 @@ export function createCallResult<T = unknown>(raw: T): CallResult<T> {
     },
     structuredContent() {
       return extractStructuredContent(raw);
+    },
+    pick<J = unknown>(paths: string | readonly string[]): J | null {
+      const data = this.json<any>();
+      if (data === null) {
+        return null;
+      }
+
+      const list = Array.isArray(paths) ? paths : [paths];
+
+      const project = (value: any): any => {
+        if (value == null || typeof value !== 'object') return value;
+
+        const out: Record<string, unknown> = {};
+
+        for (const path of list) {
+          if (!path) continue;
+          const segments = path.split('.');
+          let cursor: any = value;
+
+          // Navigate to the value
+          for (const seg of segments) {
+            if (cursor == null) break;
+            cursor = cursor[seg];
+          }
+
+          if (cursor !== undefined) {
+            // Preserve nested structure by rebuilding the path
+            if (segments.length === 1) {
+              // Simple case: top-level field
+              out[segments[0]!] = cursor;
+            } else {
+              // Nested case: rebuild the object hierarchy
+              let target = out;
+              for (let i = 0; i < segments.length - 1; i++) {
+                const seg = segments[i]!;
+                if (!(seg in target)) {
+                  target[seg] = {};
+                }
+                target = target[seg] as Record<string, unknown>;
+              }
+              const leafKey = segments[segments.length - 1]!;
+              target[leafKey] = cursor;
+            }
+          }
+        }
+
+        return out;
+      };
+
+      if (Array.isArray(data)) {
+        return data.map(project) as J;
+      }
+
+      return project(data) as J;
+    },
+    withJsonOverride<J = unknown>(nextJson: J): CallResult<T> {
+      return createCallResult(raw, { jsonOverride: nextJson });
     },
   };
 }

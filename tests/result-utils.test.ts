@@ -191,3 +191,241 @@ describe('createCallResult structured accessors', () => {
     expect(result.text()).toBe('Structured fallback');
   });
 });
+
+describe('CallResult.pick()', () => {
+  it('picks top-level fields from a single object', () => {
+    const mockResponse = {
+      content: [
+        {
+          type: 'json',
+          json: {
+            id: 'user-1',
+            name: 'Alice',
+            email: 'alice@example.com',
+            age: 30,
+            secret: 'should-not-appear',
+          },
+        },
+      ],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id', 'name', 'email']);
+
+    expect(picked).toEqual({
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    });
+  });
+
+  it('picks top-level fields from an array of objects', () => {
+    const mockResponse = {
+      content: [
+        {
+          type: 'json',
+          json: [
+            { id: 'doc-1', title: 'First', content: 'Long content...' },
+            { id: 'doc-2', title: 'Second', content: 'More content...' },
+          ],
+        },
+      ],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id', 'title']);
+
+    expect(picked).toEqual([
+      { id: 'doc-1', title: 'First' },
+      { id: 'doc-2', title: 'Second' },
+    ]);
+  });
+
+  it('picks nested fields and preserves structure', () => {
+    const mockResponse = {
+      content: [
+        {
+          type: 'json',
+          json: {
+            id: 'user-1',
+            profile: {
+              email: 'alice@example.com',
+              location: {
+                city: 'San Francisco',
+                country: 'USA',
+              },
+            },
+            settings: {
+              theme: 'dark',
+            },
+          },
+        },
+      ],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id', 'profile.email', 'profile.location.city']);
+
+    expect(picked).toEqual({
+      id: 'user-1',
+      profile: {
+        email: 'alice@example.com',
+        location: {
+          city: 'San Francisco',
+        },
+      },
+    });
+  });
+
+  it('picks nested fields from array of objects', () => {
+    const mockResponse = {
+      content: [
+        {
+          type: 'json',
+          json: [
+            {
+              id: 'doc-1',
+              title: 'Getting Started',
+              metadata: {
+                author: 'Alice',
+                stats: { views: 100, likes: 10 },
+              },
+            },
+            {
+              id: 'doc-2',
+              title: 'Advanced',
+              metadata: {
+                author: 'Bob',
+                stats: { views: 200, likes: 20 },
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id', 'title', 'metadata.author', 'metadata.stats.views']);
+
+    expect(picked).toEqual([
+      {
+        id: 'doc-1',
+        title: 'Getting Started',
+        metadata: {
+          author: 'Alice',
+          stats: { views: 100 },
+        },
+      },
+      {
+        id: 'doc-2',
+        title: 'Advanced',
+        metadata: {
+          author: 'Bob',
+          stats: { views: 200 },
+        },
+      },
+    ]);
+  });
+
+  it('handles single string path (not array)', () => {
+    const mockResponse = {
+      content: [{ type: 'json', json: { id: '123', name: 'Test' } }],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick('id');
+
+    expect(picked).toEqual({ id: '123' });
+  });
+
+  it('returns null when json() returns null', () => {
+    const mockResponse = { content: [] };
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id', 'name']);
+
+    expect(picked).toBeNull();
+  });
+
+  it('handles missing nested fields gracefully', () => {
+    const mockResponse = {
+      content: [
+        {
+          type: 'json',
+          json: {
+            id: 'user-1',
+            profile: { email: 'alice@example.com' },
+          },
+        },
+      ],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id', 'profile.email', 'profile.location.city', 'missing.field']);
+
+    expect(picked).toEqual({
+      id: 'user-1',
+      profile: { email: 'alice@example.com' },
+    });
+  });
+
+  it('handles empty pick array', () => {
+    const mockResponse = {
+      content: [{ type: 'json', json: { id: '123', name: 'Test' } }],
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick([]);
+
+    expect(picked).toEqual({});
+  });
+});
+
+describe('CallResult.withJsonOverride()', () => {
+  it('creates new CallResult with overridden json', () => {
+    const mockResponse = {
+      content: [{ type: 'json', json: { original: 'data' } }],
+    };
+
+    const result = createCallResult(mockResponse);
+    const overridden = result.withJsonOverride({ custom: 'data' });
+
+    expect(overridden.json()).toEqual({ custom: 'data' });
+    expect(overridden.raw).toBe(mockResponse); // raw unchanged
+  });
+
+  it('preserves raw envelope while changing json', () => {
+    const mockResponse = {
+      content: [{ type: 'json', json: { id: '123' } }],
+      isError: false,
+    };
+
+    const result = createCallResult(mockResponse);
+    const picked = result.pick(['id']);
+    const overridden = result.withJsonOverride(picked);
+
+    expect(overridden.raw).toEqual(mockResponse);
+    expect(overridden.json()).toEqual({ id: '123' });
+  });
+});
+
+describe('CallResult.json() with override', () => {
+  it('returns override when provided', () => {
+    const mockResponse = {
+      content: [{ type: 'json', json: { original: 'data' } }],
+    };
+
+    const result = createCallResult(mockResponse, { jsonOverride: { overridden: true } });
+
+    expect(result.json()).toEqual({ overridden: true });
+  });
+
+  it('returns parsed json when no override', () => {
+    const mockResponse = {
+      content: [{ type: 'json', json: { original: 'data' } }],
+    };
+
+    const result = createCallResult(mockResponse);
+
+    expect(result.json()).toEqual({ original: 'data' });
+  });
+});
