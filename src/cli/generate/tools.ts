@@ -112,7 +112,7 @@ export function buildPlaceholder(
   enumValues?: string[],
   formatSlug?: string
 ): string {
-  const normalized = property.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`).replace(/_/g, '-');
+  const normalized = toCliOption(property);
   if (enumValues && enumValues.length > 0) {
     return `<${normalized}:${enumValues.join('|')}>`;
   }
@@ -127,7 +127,7 @@ export function buildPlaceholder(
       if (formatSlug) {
         return `<${normalized}:${formatSlug}>`;
       }
-      return `<${normalized ?? 'value'}>`;
+      return `<${normalized || 'value'}>`;
   }
 }
 
@@ -284,7 +284,12 @@ export function toProxyMethodName(toolName: string): string {
 }
 
 export function toCliOption(property: string): string {
-  return property.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`).replace(/_/g, '-');
+  return property
+    .replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`) // camelCase -> kebab-case
+    .replace(/_/g, '-') // snake_case -> kebab-case
+    .replace(/-+/g, '-') // collapse multiple hyphens
+    .replace(/^-/, '') // remove leading hyphen
+    .toLowerCase(); // ensure lowercase
 }
 
 export const toolsTestHelpers = {

@@ -8,6 +8,26 @@ import { markExecutable } from './fs-helpers.js';
 import type { GeneratedOption, ToolMetadata } from './tools.js';
 import { buildEmbeddedSchemaMap } from './tools.js';
 
+/**
+ * Checks if a property name is a valid JavaScript identifier that can use dot notation.
+ * Returns false for names containing hyphens, starting with digits, or other invalid chars.
+ */
+function isValidJsIdentifier(name: string): boolean {
+  // Valid JS identifiers: start with letter, underscore, or $; contain letters, digits, underscores, or $
+  return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
+}
+
+/**
+ * Returns a property accessor expression for the given object and property name.
+ * Uses dot notation for valid identifiers, bracket notation otherwise.
+ */
+function propertyAccess(objectName: string, propertyName: string): string {
+  if (isValidJsIdentifier(propertyName)) {
+    return `${objectName}.${propertyName}`;
+  }
+  return `${objectName}[${JSON.stringify(propertyName)}]`;
+}
+
 export interface TemplateInput {
   outputPath?: string;
   runtimeKind: 'node' | 'bun';
@@ -434,8 +454,9 @@ export function renderToolCommand(
     });
   const buildArgs = tool.options
     .map((option) => {
-      const source = `cmdOpts.${option.property}`;
-      return `if (${source} !== undefined) args.${option.property} = ${source};`;
+      const source = propertyAccess('cmdOpts', option.property);
+      const target = propertyAccess('args', option.property);
+      return `if (${source} !== undefined) ${target} = ${source};`;
     })
     .join('\n\t\t');
   const flagUsage = doc.flagUsage;

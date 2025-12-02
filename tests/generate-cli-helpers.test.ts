@@ -85,6 +85,9 @@ describe('generate helpers', () => {
 
     expect(buildPlaceholder('myPath', 'string', ['s1', 's2'])).toBe('<my-path:s1|s2>');
     expect(buildPlaceholder('createdAt', 'string', undefined, 'iso-8601')).toBe('<created-at:iso-8601>');
+    // Handle HTTP header-style properties like "If-Match"
+    expect(buildPlaceholder('If-Match', 'string')).toBe('<if-match>');
+    expect(buildPlaceholder('Content-Type', 'string')).toBe('<content-type>');
     expect(buildExampleValue('itemId', 'string', undefined, undefined)).toBe('example-id');
     expect(buildExampleValue('mode', 'string', ['fast'], undefined)).toBe('fast');
 
@@ -99,6 +102,14 @@ describe('generate helpers', () => {
 
     expect(toProxyMethodName('some-tool_name')).toBe('someToolName');
     expect(toCliOption('inputValue')).toBe('input-value');
+    // Handle HTTP header-style properties like "If-Match", "Content-Type"
+    expect(toCliOption('If-Match')).toBe('if-match');
+    expect(toCliOption('Content-Type')).toBe('content-type');
+    expect(toCliOption('X-Custom-Header')).toBe('x-custom-header');
+    // Handle properties that already have hyphens
+    expect(toCliOption('some-value')).toBe('some-value');
+    // Handle properties starting with uppercase
+    expect(toCliOption('ItemId')).toBe('item-id');
   });
 
   it('picks example literals and fallbacks consistently', () => {
