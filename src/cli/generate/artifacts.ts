@@ -10,6 +10,12 @@ import { verifyBunAvailable } from './runtime.js';
 
 const localRequire = createRequire(import.meta.url);
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
+
+// Detect if we're running as a Bun-compiled binary (embedded in /$bunfs/).
+// When compiled, import.meta.dir points to /$bunfs/root which is a virtual filesystem
+// that can't be symlinked or accessed from disk.
+const isBunCompiledBinary = typeof import.meta.dir === 'string' && import.meta.dir.startsWith('/$bunfs/');
+
 // Generated CLIs import commander/mcporter, but end-users run mcporter from directories
 // that often lack node_modules. Pre-resolve those deps to this package so bundling works
 // even in empty temp dirs (fixes #1).
@@ -258,6 +264,12 @@ async function ensureBundlerDeps(stagingDir: string): Promise<void> {
 }
 
 function resolveDependencyDirectory(specifier: (typeof BUNDLED_DEPENDENCIES)[number]): string | undefined {
+  // When running as a compiled binary, we can't use localRequire or packageRoot
+  // because they point to the virtual /$bunfs/ filesystem. Instead, we try to
+  // find the dependency from global npm/bun installations.
+  if (isBunCompiledBinary) {
+    return resolveGlobalDependency(specifier);
+  }
   try {
     if (specifier === 'mcporter') {
       return packageRoot;
@@ -267,6 +279,49 @@ function resolveDependencyDirectory(specifier: (typeof BUNDLED_DEPENDENCIES)[num
   } catch {
     return undefined;
   }
+}
+
+// Resolve a dependency from global npm/bun installations when running as a compiled binary.
+function resolveGlobalDependency(specifier: string): string | undefined {
+  // Common global node_modules locations
+  const globalPaths = [
+    // Homebrew npm global (macOS)
+    '/opt/homebrew/lib/node_modules',
+    // User npm global (macOS/Linux)
+    path.join(process.env.HOME ?? '', '.npm-global/lib/node_modules'),
+    // nvm installations
+    ...(process.env.NVM_DIR
+      ? [path.join(process.env.NVM_DIR, 'versions/node', process.version, 'lib/node_modules')]
+      : []),
+    // Linux global
+    '/usr/local/lib/node_modules',
+    '/usr/lib/node_modules',
+    // Bun global modules
+    path.join(process.env.HOME ?? '', '.bun/install/global/node_modules'),
+  ];
+
+  // For mcporter specifically, also check if there's a published version we can use
+  for (const globalPath of globalPaths) {
+    const candidate = path.join(globalPath, specifier);
+    const pkgJson = path.join(candidate, 'package.json');
+    if (fsSync.existsSync(pkgJson)) {
+      return candidate;
+    }
+  }
+
+  // If the specifier is 'mcporter', the global mcporter should have commander/jsonc-parser
+  // in its node_modules, so check there too
+  if (specifier !== 'mcporter') {
+    for (const globalPath of globalPaths) {
+      const mcporterPath = path.join(globalPath, 'mcporter', 'node_modules', specifier);
+      const pkgJson = path.join(mcporterPath, 'package.json');
+      if (fsSync.existsSync(pkgJson)) {
+        return mcporterPath;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 async function linkOrCopyDependency(sourceDir: string, targetDir: string): Promise<void> {

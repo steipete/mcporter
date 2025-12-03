@@ -3,11 +3,6 @@
   "version": "0.6.6",
   "description": "TypeScript runtime and CLI for connecting to configured Model Context Protocol servers.",
   "packageManager": "pnpm@10.22.0",
-  "pnpm": {
-    "overrides": {
-      "body-parser": "2.2.1"
-    }
-  },
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -98,5 +93,8 @@
         "version": ">=20"
       }
     ]
+  },
+  "overrides": {
+    "body-parser": "2.2.1"
   }
 }
