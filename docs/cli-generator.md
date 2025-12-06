@@ -23,7 +23,8 @@ Create an `mcporter generate-cli` command that produces a standalone CLI for a s
 ## Steps
 1. **Command Scaffolding**
    - Add `generate-cli` subcommand to the existing CLI.
-   - Parse flags: `--server`, `--name`, `--command`, optional `--description`, plus `--output`, `--runtime=node|bun`, `--bundle`, `--bundler=rolldown|bun`, `--minify`, `--compile`, etc. Runtime auto-detects Bun when available, and the bundler inherits that choice unless overridden.
+   - Parse flags: `--server`, `--name`, `--command`, optional `--description`, plus `--output`, `--runtime=node|bun`, `--bundle`, `--bundler=rolldown|bun`, `--minify`, `--compile`, `--include-tools`, `--exclude-tools`, etc. Runtime auto-detects Bun when available, and the bundler inherits that choice unless overridden.
+   - Optional `--include-tools` / `--exclude-tools` flags allow generating a CLI that exposes only a subset of tools (mutually exclusive).
 2. **Server Resolution**
    - If `--server` matches a configured name (via `loadServerDefinitions`), use that server definition.
    - Otherwise, if the value looks like a file path, load a Cursor-style JSON definition from disk.
@@ -87,6 +88,10 @@ npx mcporter generate-cli --command "npx -y chrome-devtools-mcp@latest"
 - When targeting an existing config entry, you can skip `--server` and pass the name as a positional argument:
   `npx mcporter generate-cli linear --bundle dist/linear.js`.
 - When the MCP server is a stdio command, you can also skip `--command` by quoting the inline command as the first positional argument (e.g., `npx mcporter generate-cli "npx -y chrome-devtools-mcp@latest"`).
+- Narrow the CLI to a specific subset of tools with `--include-tools`:
+  `npx mcporter generate-cli linear --include-tools issues_list,issues_create`.
+- Hide debug or admin tools with `--exclude-tools`:
+  `npx mcporter generate-cli linear --exclude-tools debug_tool,admin_reset`.
 ```
 
 

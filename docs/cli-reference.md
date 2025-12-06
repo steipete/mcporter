@@ -46,6 +46,13 @@ A quick reference for the primary `mcporter` subcommands. Each command inherits
     `regenerate-cli` behavior, must point at an existing CLI).
   - `--dry-run` – print the resolved `mcporter generate-cli ...` command without
     executing (requires `--from`).
+  - `--include-tools <a,b,c>` – only generate subcommands for the specified tools.
+    Tool names must match the MCP tool names reported by `listTools`. It is an
+    error if any requested tool is missing.
+  - `--exclude-tools <a,b,c>` – generate subcommands for every tool except the
+    ones listed. Unknown tool names are ignored. If all tools are excluded,
+    generation fails.
+  - `--include-tools` and `--exclude-tools` are mutually exclusive.
   - Positional shorthand: `npx mcporter generate-cli linear` uses the configured
     `linear` definition; `npx mcporter generate-cli https://example.com/mcp`
     treats the URL as an ad-hoc server definition.

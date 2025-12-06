@@ -23,6 +23,8 @@ export interface GenerateFlags {
   minify?: boolean;
   from?: string;
   dryRun: boolean;
+  includeTools?: string[];
+  excludeTools?: string[];
 }
 
 export function parseGenerateFlags(args: string[]): GenerateFlags {
@@ -40,6 +42,8 @@ export function parseGenerateFlags(args: string[]): GenerateFlags {
   let minify: boolean | undefined;
   let from: string | undefined;
   let dryRun = false;
+  let includeTools: string[] | undefined;
+  let excludeTools: string[] | undefined;
 
   let index = 0;
   while (index < args.length) {
@@ -125,6 +129,18 @@ export function parseGenerateFlags(args: string[]): GenerateFlags {
       args.splice(index, 1);
       continue;
     }
+    if (token === '--include-tools') {
+      const value = expectValue(token, args[index + 1]);
+      includeTools = mergeCsvList(includeTools, value);
+      args.splice(index, 2);
+      continue;
+    }
+    if (token === '--exclude-tools') {
+      const value = expectValue(token, args[index + 1]);
+      excludeTools = mergeCsvList(excludeTools, value);
+      args.splice(index, 2);
+      continue;
+    }
     if (token.startsWith('--')) {
       throw new Error(`Unknown flag '${token}' for generate-cli.`);
     }
@@ -168,7 +184,29 @@ export function parseGenerateFlags(args: string[]): GenerateFlags {
     minify,
     from,
     dryRun,
+    includeTools,
+    excludeTools,
   };
+}
+
+function mergeCsvList(existing: string[] | undefined, value: string): string[] {
+  const parts = value
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  const base = existing ?? [];
+  const merged = [...base, ...parts];
+  // Dedupe while preserving order
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const name of merged) {
+    if (!seen.has(name)) {
+      seen.add(name);
+      result.push(name);
+    }
+  }
+  return result;
 }
 
 function normalizeCommandInput(value: string): CommandInput {

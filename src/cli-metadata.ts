@@ -53,6 +53,8 @@ export interface CliArtifactMetadata {
     compile?: boolean | string;
     timeoutMs: number;
     minify: boolean;
+    includeTools?: string[];
+    excludeTools?: string[];
   };
 }
 
