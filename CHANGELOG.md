@@ -6,8 +6,6 @@
 - `mcporter auth --reset` now clears the vault and legacy caches without crashing on corrupted credential files, making re-auth reliable for servers like Gmail.
 - StdIO servers that expose a separate auth subcommand (e.g., Gmail MCP) can now declare `oauthCommand.args`; `mcporter auth <server>` will spawn that helper and wait for browser completion, so Gmail auth now works without running npx manually.
 
-## [0.6.7] - 2025-12-06
-### CLI
 - Raw output now prints full strings without Node’s 10k-character truncation (`util.inspect` uses `maxStringLength: null`), so large MCP responses and plans are preserved end-to-end.
 - Added regression coverage to ensure future raw output changes cannot reintroduce truncation.
 
