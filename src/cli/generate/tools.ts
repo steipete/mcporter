@@ -12,6 +12,7 @@ export interface GeneratedOption {
   description?: string;
   required: boolean;
   type: 'string' | 'number' | 'boolean' | 'array' | 'unknown';
+  arrayItemType?: 'string' | 'number' | 'boolean' | 'unknown';
   placeholder: string;
   exampleValue?: string;
   enumValues?: string[];
@@ -53,6 +54,7 @@ export function extractOptions(tool: ServerToolInfo): GeneratedOption[] {
   const requiredList = Array.isArray(record.required) ? (record.required as string[]) : [];
   return Object.entries(properties).map(([property, descriptor]) => {
     const type = inferType(descriptor);
+    const arrayItemType = type === 'array' ? inferArrayItemType(descriptor) : undefined;
     const enumValues = getEnumValues(descriptor);
     const defaultValue = getDescriptorDefault(descriptor);
     const formatInfo = getDescriptorFormatHint(descriptor);
@@ -64,6 +66,7 @@ export function extractOptions(tool: ServerToolInfo): GeneratedOption[] {
       description: getDescriptorDescription(descriptor),
       required: requiredList.includes(property),
       type,
+      arrayItemType,
       placeholder,
       exampleValue,
       enumValues,
@@ -223,6 +226,22 @@ export function inferType(descriptor: unknown): GeneratedOption['type'] {
   const type = (descriptor as Record<string, unknown>).type;
   if (type === 'string' || type === 'number' || type === 'boolean' || type === 'array') {
     return type;
+  }
+  return 'unknown';
+}
+
+export function inferArrayItemType(descriptor: unknown): GeneratedOption['arrayItemType'] {
+  if (!descriptor || typeof descriptor !== 'object') {
+    return 'unknown';
+  }
+  const record = descriptor as Record<string, unknown>;
+  if (record.type !== 'array' || !record.items || typeof record.items !== 'object') {
+    return 'unknown';
+  }
+  const items = record.items as Record<string, unknown>;
+  const itemType = items.type;
+  if (itemType === 'string' || itemType === 'number' || itemType === 'boolean') {
+    return itemType;
   }
   return 'unknown';
 }

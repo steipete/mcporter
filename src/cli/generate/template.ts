@@ -493,7 +493,15 @@ function optionParser(option: GeneratedOption): string | undefined {
     case 'boolean':
       return "(value) => value !== 'false'";
     case 'array':
-      return "(value) => value.split(',')";
+      // Coerce array elements to their proper types based on schema
+      switch (option.arrayItemType) {
+        case 'number':
+          return "(value) => value.split(',').map((v) => parseFloat(v.trim()))";
+        case 'boolean':
+          return "(value) => value.split(',').map((v) => v.trim() !== 'false')";
+        default:
+          return "(value) => value.split(',').map((v) => v.trim())";
+      }
     default:
       return undefined;
   }
