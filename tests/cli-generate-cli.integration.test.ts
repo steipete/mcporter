@@ -200,7 +200,57 @@ describe('mcporter CLI integration', () => {
     expect(helpOutput.stdout).toContain('ping - Simple health check');
     expect(helpOutput.stdout).toContain('--echo <echo>');
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
-  });
+  }, 20000);
+
+  it('generates a Bun CLI that can call a tool', async () => {
+    if (!(await ensureBunSupport('Bun CLI execution test'))) {
+      return;
+    }
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mcporter-bun-cli-'));
+    await fs.writeFile(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify({ name: 'mcporter-bun-cli', version: '0.0.0' }, null, 2),
+      'utf8'
+    );
+    const bundlePath = path.join(tempDir, 'context7-bun-cli.js');
+
+    await new Promise<void>((resolve, reject) => {
+      execFile(
+        process.execPath,
+        [CLI_ENTRY, 'generate-cli', '--command', baseUrl.toString(), '--runtime', 'bun', '--bundle', bundlePath],
+        {
+          cwd: tempDir,
+          env: { ...process.env, MCPORTER_NO_FORCE_EXIT: '1' },
+        },
+        (error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+
+    const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      execFile(
+        bundlePath,
+        ['ping', '--echo', 'ban', '--output', 'json'],
+        { env: process.env },
+        (error, stdout, stderr) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve({ stdout, stderr });
+        }
+      );
+    });
+    const parsed = JSON.parse(result.stdout.trim()) as { ok: boolean; echo?: string };
+    expect(parsed.ok).toBe(true);
+    expect(parsed.echo).toBe('ban');
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }, 20000);
 
   it('runs "node dist/cli.js generate-cli --compile" when bun is available', async () => {
     if (!(await ensureBunSupport('compile integration test'))) {

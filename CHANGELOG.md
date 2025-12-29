@@ -4,6 +4,18 @@
 
 No unreleased changes yet.
 
+## [0.7.2] - 2025-12-29
+### CLI
+- Fixed generated CLIs to read Commander.js option values via camelCased properties so snake_case tool schemas map correctly.
+
+### Tests
+- Added regression coverage for snake_case, camelCase, and numeric option names in generated CLIs.
+- Increased the Bun bundler integration-test timeout to reduce flakes on slower runners.
+
+### Tooling / Dependencies
+- Updated dependency set (SDK, Rolldown, Zod, Biome, Oxlint, Bun types).
+- Synced the Biome schema URL to the current CLI version.
+
 ## [0.7.1] - 2025-12-08
 ### Daemon
 - Track config file mtimes for every loaded layer (home + project or explicit) in daemon metadata and auto-restart when any layer changes, so newly added keep-alive servers are picked up without manual restarts. Includes regression tests for stale-daemon detection.

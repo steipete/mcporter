@@ -434,8 +434,12 @@ export function renderToolCommand(
     });
   const buildArgs = tool.options
     .map((option) => {
-      // Commander.js converts kebab-case flags to camelCase property names
-      const camelCaseProp = option.cliName.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      // Commander.js camelcases flag names (e.g. --relative-path => relativePath).
+      const camelCaseProp = option.cliName
+        .split('-')
+        .filter(Boolean)
+        .map((segment, index) => (index === 0 ? segment : `${segment.charAt(0).toUpperCase()}${segment.slice(1)}`))
+        .join('');
       const source = `cmdOpts.${camelCaseProp}`;
       return `if (${source} !== undefined) args.${option.property} = ${source};`;
     })

@@ -54,6 +54,24 @@ if (process.platform !== 'win32') {
         };
       }
     );
+    server.registerTool(
+      'option_case_test',
+      {
+        title: 'Option Case Test',
+        description: 'Tool with snake_case, camelCase, and numeric option names',
+        inputSchema: {
+          relative_path: z.string(),
+          api_key: z.string(),
+          tls_1_3: z.boolean(),
+          issueId: z.string(),
+        },
+        outputSchema: { ok: z.boolean() },
+      },
+      async () => ({
+        content: [{ type: 'text', text: JSON.stringify({ ok: true }) }],
+        structuredContent: { ok: true },
+      })
+    );
     server.registerResource(
       'greeting',
       new ResourceTemplate('greeting://{name}', { list: undefined }),
@@ -315,6 +333,36 @@ describeGenerateCli('generateCli', () => {
     expect(stdout).toContain('qs-demo add');
     expect(stdout).toContain('qs-demo list-comments');
     expect(stdout).not.toContain('<tool> key=value');
+  });
+
+  it('maps CLI options to Commander camelCase properties', async () => {
+    const inline = JSON.stringify({
+      name: 'case-options',
+      description: 'Case options test',
+      command: baseUrl.toString(),
+    });
+    const outputPath = path.join(tmpDir, 'case-options.ts');
+    await fs.rm(outputPath, { force: true });
+
+    const { outputPath: renderedPath } = await generateCli({
+      serverRef: inline,
+      outputPath,
+      runtime: 'node',
+      timeoutMs: 5_000,
+    });
+    const content = await fs.readFile(renderedPath, 'utf8');
+
+    expect(content).toContain('args.relative_path');
+    expect(content).toContain('args.api_key');
+    expect(content).toContain('args.tls_1_3');
+    expect(content).toContain('args.issueId');
+    expect(content).toContain('cmdOpts.relativePath');
+    expect(content).toContain('cmdOpts.apiKey');
+    expect(content).toContain('cmdOpts.tls13');
+    expect(content).toContain('cmdOpts.issueId');
+    expect(content).not.toContain('cmdOpts.relative_path');
+    expect(content).not.toContain('cmdOpts.api_key');
+    expect(content).not.toContain('cmdOpts.tls_1_3');
   });
 
   it('accepts both kebab-case and underscore tool names for generated CLIs', async () => {
