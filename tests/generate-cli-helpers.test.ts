@@ -9,6 +9,7 @@ import {
   getDescriptorDescription,
   getDescriptorFormatHint,
   getEnumValues,
+  inferArrayItemType,
   inferType,
   pickExampleLiteral,
   toCliOption,
@@ -89,7 +90,14 @@ describe('generate helpers', () => {
     expect(buildExampleValue('mode', 'string', ['fast'], undefined)).toBe('fast');
 
     expect(inferType({ type: 'boolean' })).toBe('boolean');
+    expect(inferType({ type: 'integer' })).toBe('number');
+    expect(inferType({ type: ['null', 'integer'] })).toBe('number');
+    expect(inferType({ type: ['null', 'array'] })).toBe('array');
     expect(inferType({})).toBe('unknown');
+
+    expect(inferArrayItemType({ type: 'array', items: { type: 'integer' } })).toBe('number');
+    expect(inferArrayItemType({ type: 'array', items: { type: ['null', 'boolean'] } })).toBe('boolean');
+    expect(inferArrayItemType({ type: 'array', items: { type: 'object' } })).toBe('unknown');
 
     expect(getDescriptorDescription({ description: 'hi' })).toBe('hi');
     expect(getDescriptorDescription({})).toBeUndefined();

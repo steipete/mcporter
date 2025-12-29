@@ -2,7 +2,11 @@
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### CLI
+- Coerce generated CLI array arguments based on JSON Schema item types (including integer arrays).
+
+### Tests
+- Added regression coverage for typed array parsing in generated CLIs.
 
 ## [0.7.2] - 2025-12-29
 ### CLI

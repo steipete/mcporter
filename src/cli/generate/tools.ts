@@ -224,8 +224,27 @@ export function inferType(descriptor: unknown): GeneratedOption['type'] {
     return 'unknown';
   }
   const type = (descriptor as Record<string, unknown>).type;
-  if (type === 'string' || type === 'number' || type === 'boolean' || type === 'array') {
-    return type;
+  const resolveType = (value: unknown): GeneratedOption['type'] | undefined => {
+    if (value === 'integer') {
+      return 'number';
+    }
+    if (value === 'string' || value === 'number' || value === 'boolean' || value === 'array') {
+      return value;
+    }
+    return undefined;
+  };
+  if (Array.isArray(type)) {
+    for (const entry of type) {
+      const resolved = resolveType(entry);
+      if (resolved) {
+        return resolved;
+      }
+    }
+    return 'unknown';
+  }
+  const resolved = resolveType(type);
+  if (resolved) {
+    return resolved;
   }
   return 'unknown';
 }
@@ -240,8 +259,27 @@ export function inferArrayItemType(descriptor: unknown): GeneratedOption['arrayI
   }
   const items = record.items as Record<string, unknown>;
   const itemType = items.type;
-  if (itemType === 'string' || itemType === 'number' || itemType === 'boolean') {
-    return itemType;
+  const resolveItemType = (value: unknown): GeneratedOption['arrayItemType'] | undefined => {
+    if (value === 'integer') {
+      return 'number';
+    }
+    if (value === 'string' || value === 'number' || value === 'boolean') {
+      return value;
+    }
+    return undefined;
+  };
+  if (Array.isArray(itemType)) {
+    for (const entry of itemType) {
+      const resolved = resolveItemType(entry);
+      if (resolved) {
+        return resolved;
+      }
+    }
+    return 'unknown';
+  }
+  const resolved = resolveItemType(itemType);
+  if (resolved) {
+    return resolved;
   }
   return 'unknown';
 }

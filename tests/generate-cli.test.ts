@@ -72,6 +72,29 @@ if (process.platform !== 'win32') {
         structuredContent: { ok: true },
       })
     );
+    server.registerTool(
+      'array_tool',
+      {
+        title: 'Array Tool',
+        description: 'Tool with typed array inputs',
+        inputSchema: {
+          coords: z.array(z.number()),
+          flags: z.array(z.boolean()),
+          names: z.array(z.string()),
+          ids: z.array(z.number().int()),
+        },
+        outputSchema: {
+          coords: z.array(z.number()),
+          flags: z.array(z.boolean()),
+          names: z.array(z.string()),
+          ids: z.array(z.number().int()),
+        },
+      },
+      async ({ coords, flags, names, ids }) => ({
+        content: [{ type: 'text', text: JSON.stringify({ coords, flags, names, ids }) }],
+        structuredContent: { coords, flags, names, ids },
+      })
+    );
     server.registerResource(
       'greeting',
       new ResourceTemplate('greeting://{name}', { list: undefined }),
@@ -363,6 +386,65 @@ describeGenerateCli('generateCli', () => {
     expect(content).not.toContain('cmdOpts.relative_path');
     expect(content).not.toContain('cmdOpts.api_key');
     expect(content).not.toContain('cmdOpts.tls_1_3');
+  });
+
+  it('coerces array option values using schema item types', async () => {
+    const inline = JSON.stringify({
+      name: 'array-test',
+      description: 'Array coercion test',
+      command: baseUrl.toString(),
+    });
+    const outputPath = path.join(tmpDir, 'array-test.ts');
+    await fs.rm(outputPath, { force: true });
+
+    const { outputPath: renderedPath } = await generateCli({
+      serverRef: inline,
+      outputPath,
+      runtime: 'node',
+      timeoutMs: 5_000,
+    });
+    expect(renderedPath).toBe(outputPath);
+
+    const { execFile } = await import('node:child_process');
+    const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      execFile(
+        'pnpm',
+        [
+          'exec',
+          'tsx',
+          renderedPath,
+          'array-tool',
+          '--coords',
+          '1, 2.5',
+          '--flags',
+          'true, false',
+          '--names',
+          'alpha, beta',
+          '--ids',
+          '1,2,3',
+          '--output',
+          'json',
+        ],
+        execOptions(),
+        (error: import('node:child_process').ExecFileException | null, out: string, err: string) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve({ stdout: out, stderr: err });
+        }
+      );
+    });
+    const parsed = JSON.parse(stdout) as {
+      coords: number[];
+      flags: boolean[];
+      names: string[];
+      ids: number[];
+    };
+    expect(parsed.coords).toEqual([1, 2.5]);
+    expect(parsed.flags).toEqual([true, false]);
+    expect(parsed.names).toEqual(['alpha', 'beta']);
+    expect(parsed.ids).toEqual([1, 2, 3]);
   });
 
   it('accepts both kebab-case and underscore tool names for generated CLIs', async () => {
